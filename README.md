@@ -29,7 +29,7 @@ py -3.14 -m footprint_sketcher
 
 ## 第1段階の動作確認
 
-- Windows Server 2025（10.0.26100）、Python 3.14.10、Tk 9.0.4、Pillow 12.3.0で、PNG・JPEGそれぞれの下絵表示からパッド配置、ファイル出力までを確認しました。[Windowsの検証ログ](https://github.com/ReiA-O/kicad-footprint-sketcher/actions/runs/45032949861)
+- Windows Server 2025（10.0.26100）で、PNG・JPEGそれぞれの下絵表示からパッド配置、ファイル出力までと、パッド角度の書き出しを確認しました。[Windowsの検証ログ](https://github.com/ReiA-O/kicad-footprint-sketcher/actions/runs/45043519579)
 - Ubuntu 26.04.1でPNGとJPEGをそれぞれ開き、校正、原点指定、パッド配置、ファイル出力を確認しました。両方の出力は一致しました。[操作画面](examples/stage1/sketcher-preview.png)
 - Ubuntu上のKiCad 10.0.8で出力例を開き、原点、番号、位置、寸法、角度、角のR、レイヤーを照合しました。表の入力値との差はこの例では0でした。Footprint Checkerは、段階1の作図範囲外であるCourtyardの未定義を報告しました。[KiCadで開いた画面](examples/stage1/kicad-preview.png)
 
