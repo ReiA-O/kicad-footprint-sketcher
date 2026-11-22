@@ -1,0 +1,53 @@
+[
+  {
+    "status": "failed",
+    "commit": "430784ed86f24d558d546f45e03c0c5d7d1896e4",
+    "tests_run": 136,
+    "failures": 2,
+    "errors": 1,
+    "skipped": [],
+    "started_utc": "2026-11-22T19:50:26.831446+00:00",
+    "finished_utc": "2026-11-22T19:52:04.490238+00:00",
+    "archive_member": "expanded-first-20261123.zip",
+    "failure_log_tail": "\nERROR: test_reference_value_edit_replaces_only_string_token (test_persistence.PersistenceTests.test_reference_value_edit_replaces_only_string_token)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"D:\\CodexWork\\projects\\kicad-footprint-sketcher\\tests\\test_persistence.py\", line 91, in test_reference_value_edit_replaces_only_string_token\n    self.assertEqual(output.read_text(), expected)\n                     ~~~~~~~~~~~~~~~~^^\n  File \"C:\\Users\\ewoka\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\pathlib\\__init__.py\", line 788, in read_text\n    return f.read()\n           ~~~~~~^^\nUnicodeDecodeError: 'cp932' codec can't decode byte 0x8c in position 205: illegal multibyte sequence\n\n======================================================================\nFAIL: test_hole_back_side_and_opening_attributes_apply_and_export (test_extended_gui.ExtendedGuiTests.test_hole_back_side_and_opening_attributes_apply_and_export) (kind='np_thru_hole')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"D:\\CodexWork\\projects\\kicad-footprint-sketcher\\tests\\test_extended_gui.py\", line 242, in test_hole_back_side_and_opening_attributes_apply_and_export\n    self.assertIn(b'(drill oval 0.6 0.4)' if kind == \"thru_hole\" else b'(drill 1)', payload)\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: b'(drill 1)' not found in b'(footprint \"Interaction_Check\"\\n  (version 20260206)\\n  (generator \"kicad_footprint_sketcher\")\\n  (layer \"F.Cu\")\\n  (property \"Reference\" \"REF**\"\\n    (at 0 0 0) (layer \"F.SilkS\") (hide yes)\\n    (effects (font (size 1 1) (thickness 0.15)))\\n  )\\n  (property \"Value\" \"Interaction_Check\"\\n    (at 0 0 0) (layer \"F.Fab\") (hide yes)\\n    (effects (font (size 1 1) (thickness 0.15)))\\n  )\\n  (pad \"1\" np_thru_hole circle\\n    (at 1.25 -1.5 0)\\n    (size 2.0 2.0)\\n    (layers \"*.Cu\" \"*.Mask\")\\n    (drill 1.0)\\n  )\\n)\\n'\n\n======================================================================\nFAIL: test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility (test_extended_gui.ExtendedGuiTests.test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"D:\\CodexWork\\projects\\kicad-footprint-sketcher\\tests\\test_extended_gui.py\", line 268, in test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility\n    self._graphic(kind, points, layer)\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\CodexWork\\projects\\kicad-footprint-sketcher\\tests\\test_extended_gui.py\", line 95, in _graphic\n    self.assertEqual((result.graphic_kind, result.layer), (kind, layer))\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Tuples differ: ('rect', 'F.Cu') != ('roundrect', 'F.Mask')\n\nFirst differing element 0:\n'rect'\n'roundrect'\n\n- ('rect', 'F.Cu')\n+ ('roundrect', 'F.Mask')\n\n----------------------------------------------------------------------\nRan 136 tests in 96.393s\n\nFAILED (failures=2, errors=1)\n"
+  },
+  {
+    "status": "completed",
+    "commit": "387691e238b18e6746fd50a7d0fdeb77e7328263",
+    "tests_run": 144,
+    "failures": 0,
+    "errors": 0,
+    "skipped": [],
+    "started_utc": "2026-11-22T19:55:54.231256+00:00",
+    "finished_utc": "2026-11-22T19:57:44.036264+00:00",
+    "archive_member": "expanded-second-20261123.zip",
+    "failure_log_tail": null,
+    "kicad_readback": {
+      "status": "failed",
+      "failed_cases": 1,
+      "outputs": 76,
+      "source_commit": "387691e238b18e6746fd50a7d0fdeb77e7328263"
+    }
+  },
+  {
+    "status": "failed",
+    "commit": "c436ca872ed8139131c3d4e323eab17e9085fb27",
+    "tests_run": 154,
+    "failures": 1,
+    "errors": 0,
+    "skipped": [],
+    "started_utc": "2026-11-22T20:06:04.338397+00:00",
+    "finished_utc": "2026-11-22T20:08:12.728643+00:00",
+    "archive_member": "expanded-third-20261123.zip",
+    "failure_log_tail": "\nFAIL: test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility (test_extended_gui.ExtendedGuiTests.test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"D:\\CodexWork\\projects\\kicad-footprint-sketcher\\tests\\test_extended_gui.py\", line 527, in test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility\n    self._graphic(kind, points, layer)\n    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\CodexWork\\projects\\kicad-footprint-sketcher\\tests\\test_extended_gui.py\", line 101, in _graphic\n    self._entry(self.app.pad_radius, \"0.2\")\n    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\CodexWork\\projects\\kicad-footprint-sketcher\\tests\\test_gui_interactions.py\", line 114, in _entry\n    self.assertEqual(variable.get(), str(value))\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: '0' != '0.2'\n- 0\n+ 0.2\n\n\n----------------------------------------------------------------------\nRan 154 tests in 127.480s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "status": "completed",
+    "tested_local_source": "1e0210c1655ff5aa146efb4597837a605c3c613d",
+    "windows_tests": 154,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "outputs": 99
+  }
+]

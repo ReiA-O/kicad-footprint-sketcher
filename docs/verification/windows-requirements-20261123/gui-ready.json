@@ -1,0 +1,16 @@
+{
+  "commit": "1e0210c1655ff5aa146efb4597837a605c3c613d",
+  "title": "KiCad Footprint Sketcher - 要件補完版・操作デモ",
+  "mapped": true,
+  "canvas": [
+    1229,
+    629
+  ],
+  "logical_entities": 8,
+  "constraints": 2,
+  "project": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\Requirements_Demo.kfsproj",
+  "panel_client_size": [
+    900,
+    900
+  ]
+}
