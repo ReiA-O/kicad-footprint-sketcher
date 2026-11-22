@@ -7,7 +7,7 @@ import tkinter as tk
 
 from PIL import Image, ImageTk
 
-from .model import Pad, Point, Sketch
+from .model import AxisCalibration, Pad, Point, Sketch
 
 
 SURFACE = "#ffffff"
@@ -130,6 +130,7 @@ class SketchCanvas(tk.Canvas):
         candidate_points: list[Point],
         selected_index: int | None = None,
         preview_pad: Pad | None = None,
+        calibration_axes: bool = False,
     ) -> None:
         self.delete("all")
         width, height = self.winfo_width(), self.winfo_height()
@@ -147,8 +148,14 @@ class SketchCanvas(tk.Canvas):
         self._draw_image(width, height)
 
         points = candidate_points
+        axes = calibration_axes
         if not points and sketch.calibration is not None:
-            points = [sketch.calibration.a, sketch.calibration.b]
+            calibration = sketch.calibration
+            axes = isinstance(calibration, AxisCalibration)
+            if axes:
+                points = [calibration.x_a, calibration.x_b, calibration.y_a, calibration.y_b]
+            else:
+                points = [calibration.a, calibration.b]
         if sketch.origin is not None:
             for index, pad in enumerate(sketch.pads):
                 if preview_pad is not None and index == selected_index:
@@ -159,7 +166,7 @@ class SketchCanvas(tk.Canvas):
             if selected_index is not None and 0 <= selected_index < len(sketch.pads):
                 self._draw_selection(preview_pad or sketch.pads[selected_index], sketch)
             self._draw_origin(sketch.origin)
-        self._draw_calibration(points)
+        self._draw_calibration(points, axes=axes, active=bool(candidate_points))
 
     def _draw_image(self, width: int, height: int) -> None:
         image = self.image
@@ -214,11 +221,20 @@ class SketchCanvas(tk.Canvas):
             for x, y in points
         ]
 
-    def _draw_calibration(self, points: list[Point]) -> None:
+    def _draw_calibration(self, points: list[Point], *, axes: bool = False, active: bool = False) -> None:
         screen_points = [self.image_to_canvas(point) for point in points]
-        if len(screen_points) == 2:
-            self.create_line(*self._clipped(screen_points), fill=BLUE, dash=(5, 3))
-        for label, (x, y) in zip(("A", "B"), screen_points):
+        pairs = (screen_points[:2], screen_points[2:4]) if axes else (screen_points[:2],)
+        for pair in pairs:
+            if len(pair) == 2:
+                self.create_line(*self._clipped(pair), fill=BLUE, dash=(5, 3))
+        if axes and active and len(screen_points) in (1, 3):
+            x, y = screen_points[-1]
+            if len(screen_points) == 1 and 0 <= y <= self.winfo_height():
+                self.create_line(0, y, self.winfo_width(), y, fill=BLUE, dash=(2, 4))
+            elif len(screen_points) == 3 and 0 <= x <= self.winfo_width():
+                self.create_line(x, 0, x, self.winfo_height(), fill=BLUE, dash=(2, 4))
+        labels = ("X1", "X2", "Y1", "Y2") if axes else ("A", "B")
+        for label, (x, y) in zip(labels, screen_points):
             if not (-15 <= x <= self.winfo_width() + 15 and -15 <= y <= self.winfo_height() + 15):
                 continue
             self.create_oval(x - 4, y - 4, x + 4, y + 4, fill=SURFACE, outline=BLUE, width=2)
@@ -235,17 +251,13 @@ class SketchCanvas(tk.Canvas):
         self.create_text(x - 6, y - 6, text="0", fill=BLUE, anchor="se")
 
     def _pad_vertices(self, pad: Pad, sketch: Sketch, points: list[Point]) -> list[Point]:
-        calibration = sketch.calibration
-        assert calibration is not None
-        pixels_per_mm = self.scale / calibration.mm_per_pixel
-        cx, cy = self.image_to_canvas(sketch.mm_to_image((pad.x, pad.y)))
         angle = math.radians(pad.angle % 360)
         cos_angle, sin_angle = math.cos(angle), math.sin(angle)
         return [
-            (
-                cx + (x * cos_angle + y * sin_angle) * pixels_per_mm,
-                cy + (y * cos_angle - x * sin_angle) * pixels_per_mm,
-            )
+            self.image_to_canvas(sketch.mm_to_image((
+                pad.x + x * cos_angle + y * sin_angle,
+                pad.y + y * cos_angle - x * sin_angle,
+            )))
             for x, y in points
         ]
 

@@ -52,6 +52,53 @@ class Calibration:
         object.__setattr__(self, "b", b)
         object.__setattr__(self, "mm_per_pixel", scale)
 
+    @property
+    def mm_per_pixel_x(self) -> float:
+        return self.mm_per_pixel
+
+    @property
+    def mm_per_pixel_y(self) -> float:
+        return self.mm_per_pixel
+
+
+@dataclass(frozen=True)
+class AxisCalibration:
+    """Independent image X/Y scales measured with horizontal/vertical pairs."""
+
+    x_a: Point
+    x_b: Point
+    x_distance: float
+    y_a: Point
+    y_b: Point
+    y_distance: float
+    mm_per_pixel_x: float = field(init=False)
+    mm_per_pixel_y: float = field(init=False)
+
+    def __post_init__(self) -> None:
+        x_a, x_b = _checked_point(self.x_a), _checked_point(self.x_b)
+        y_a, y_b = _checked_point(self.y_a), _checked_point(self.y_b)
+        if x_a[1] != x_b[1]:
+            raise ValueError("横校正の2点は同じ高さに指定してください。")
+        if y_a[0] != y_b[0]:
+            raise ValueError("縦校正の2点は同じ横位置に指定してください。")
+        pixels_x = abs(x_b[0] - x_a[0])
+        pixels_y = abs(y_b[1] - y_a[1])
+        for label, pixels, distance in (
+            ("横", pixels_x, self.x_distance),
+            ("縦", pixels_y, self.y_distance),
+        ):
+            if pixels <= 0 or not math.isfinite(pixels):
+                raise ValueError(f"{label}校正には画像上の異なる2点を指定してください。")
+            if distance <= 0 or not math.isfinite(distance):
+                raise ValueError(f"{label}校正の実距離は正の有限値を mm で指定してください。")
+            scale = distance / pixels
+            if scale <= 0 or not math.isfinite(scale):
+                raise ValueError(f"{label}校正の縮尺を計算できません。2点と実距離を確認してください。")
+            attribute = "mm_per_pixel_x" if label == "横" else "mm_per_pixel_y"
+            object.__setattr__(self, attribute, scale)
+        for attribute, point in (("x_a", x_a), ("x_b", x_b), ("y_a", y_a), ("y_b", y_b)):
+            object.__setattr__(self, attribute, point)
+
 
 @dataclass(frozen=True)
 class Pad:
@@ -83,12 +130,18 @@ class Pad:
 
 @dataclass
 class Sketch:
-    calibration: Calibration | None = field(default=None, init=False)
+    calibration: Calibration | AxisCalibration | None = field(default=None, init=False)
     origin: Point | None = field(default=None, init=False)
     pads: list[Pad] = field(default_factory=list, init=False)
 
     def set_calibration(self, a: Point, b: Point, distance: float) -> None:
         self.calibration = Calibration(a, b, distance)
+
+    def set_axis_calibration(
+        self, x_a: Point, x_b: Point, x_distance: float,
+        y_a: Point, y_b: Point, y_distance: float,
+    ) -> None:
+        self.calibration = AxisCalibration(x_a, x_b, x_distance, y_a, y_b, y_distance)
 
     def set_origin(self, point: Point) -> None:
         new_origin = _checked_point(point)
@@ -98,21 +151,21 @@ class Sketch:
             self.pads[:] = shifted
         self.origin = new_origin
 
-    def _image_frame(self) -> tuple[Point, float]:
+    def _image_frame(self) -> tuple[Point, float, float]:
         if self.calibration is None or self.origin is None:
-            raise ValueError("2点校正を行い、原点を指定してください。")
-        return self.origin, self.calibration.mm_per_pixel
+            raise ValueError("校正を行い、原点を指定してください。")
+        return self.origin, self.calibration.mm_per_pixel_x, self.calibration.mm_per_pixel_y
 
     def image_to_mm(self, point: Point) -> Point:
         """Map image pixels to footprint-local mm with X right and Y down."""
-        (origin_x, origin_y), scale = self._image_frame()
+        (origin_x, origin_y), scale_x, scale_y = self._image_frame()
         x, y = _checked_point(point)
-        return _checked_point(((x - origin_x) * scale, (y - origin_y) * scale))
+        return _checked_point(((x - origin_x) * scale_x, (y - origin_y) * scale_y))
 
     def mm_to_image(self, point: Point) -> Point:
-        (origin_x, origin_y), scale = self._image_frame()
+        (origin_x, origin_y), scale_x, scale_y = self._image_frame()
         x, y = _checked_point(point)
-        return _checked_point((origin_x + x / scale, origin_y + y / scale))
+        return _checked_point((origin_x + x / scale_x, origin_y + y / scale_y))
 
     def add_pad(self, pad: Pad) -> None:
         self._image_frame()
