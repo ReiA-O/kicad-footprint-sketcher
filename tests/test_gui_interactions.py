@@ -215,6 +215,18 @@ class GuiInteractionTests(unittest.TestCase):
             self.assertEqual(float(variable.get()), getattr(pad, name))
 
     def test_numeric_continuous_placement_frozen_copy_and_group_paste_undo(self):
+        def assert_released(snapshot, history):
+            self.assertEqual((self.app.mode, self.app.tool.get()), ("idle", "select"))
+            self.assertEqual(self._state(), snapshot)
+            self.assertEqual(tuple(self.app.history._snapshots), history)
+            self.assertIsNone(self.app._drag)
+            self.assertIsNone(self.app._preview_pad)
+            self.assertFalse(self.app._preview_pads)
+            self.assertFalse(self.app._paste_previews)
+            self.assertFalse(self.app._snap_guides)
+            self.assertFalse(self.app.canvas.find_withtag("preview"))
+            self.assertFalse(self.app.canvas.find_withtag("center-snap-guide"))
+
         self._calibrate()
         self.app.center_snap.set(False)
         for variable, value in ((self.app.pad_number, "1"), (self.app.pad_width, "1.6"),
@@ -229,6 +241,24 @@ class GuiInteractionTests(unittest.TestCase):
             self._assert_point((pad.x, pad.y), target)
             self.assertEqual((pad.width, pad.height, pad.angle, pad.radius), (1.6, 1.2, 30, 0.25))
         self.assertEqual((self.app.mode, self.app.tool.get(), self.app.pad_number.get()), ("pad", "pad", "3"))
+
+        snapshot, history = self._state(), tuple(self.app.history._snapshots)
+        self.app.center_snap.set(True)
+        screen = self._screen((originals[0].x + 0.05, originals[0].y + 0.05), world=True)
+        self._event("<Motion>", screen)
+        self.assertEqual(len(self.app._paste_previews), 1)
+        self.assertTrue(self.app._snap_guides)
+        self._event("<Button-3>", screen)
+        self._event("<ButtonRelease-3>", screen)
+        assert_released(snapshot, history)
+        self.app.center_snap.set(False)
+        self._button("数値サイズで配置")
+        self._click((0, 3), world=True)
+        self.assertEqual([pad.number for pad in self.app.sketch.pads], ["1", "2", "3"])
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), snapshot)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self.assertEqual(self.app.mode, "pad")
 
         self._button("選択/移動")
         self._click((originals[0].x, originals[0].y), world=True)
@@ -271,6 +301,18 @@ class GuiInteractionTests(unittest.TestCase):
         self.assertEqual(self._state(), before_invalid_tool)
         self.assertEqual(tuple(self.app.clipboard), copied)
         self._entry(self.app.pad_width, width)
+        snapshot, history = self._state(), tuple(self.app.history._snapshots)
+        self.app.center_snap.set(True)
+        screen = self._screen((edited[0].x + 0.05, edited[0].y + 0.05), world=True)
+        self._event("<Motion>", screen)
+        self.assertEqual(len(self.app._paste_previews), 2)
+        self.assertTrue(self.app._snap_guides)
+        self._event("<Button-3>", screen)
+        self._event("<ButtonRelease-3>", screen)
+        assert_released(snapshot, history)
+        self.assertEqual(tuple(self.app.clipboard), copied)
+        self.app.center_snap.set(False)
+        self._button("貼り付け")
         target = self._click((-1, 2.5), world=True)
         self.assertEqual(tuple(self.app.sketch.pads[:2]), edited)
         pasted = tuple(self.app.sketch.pads[2:])
@@ -560,6 +602,102 @@ class GuiInteractionTests(unittest.TestCase):
                 paste.assert_not_called()
         finally:
             entry.bindtags(original_tags)
+
+    def test_marquee_selection_ctrl_toggle_group_move_and_cancel_preserve_document(self):
+        self._calibrate()
+        self.app.center_snap.set(False)
+        for variable, value in ((self.app.pad_number, "1"), (self.app.pad_width, "0.8"),
+                                (self.app.pad_height, "0.6"), (self.app.pad_angle, "0"),
+                                (self.app.pad_radius, "0")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        for point in ((-4, -2), (-1, -1), (2, 1), (5, 3)):
+            self._click(point, world=True)
+        self._button("選択/移動")
+        originals = tuple(self.app.sketch.pads)
+        baseline, payload = self._state(), self._export_bytes()
+        history = tuple(self.app.history._snapshots)
+
+        def ctrl_click(index):
+            pad = self.app.sketch.pads[index]
+            screen = self._screen((pad.x, pad.y), world=True)
+            self._event("<Button-1>", screen, state=4)
+            self._event("<ButtonRelease-1>", screen, state=4)
+
+        def begin_marquee(start, end):
+            self._world_event("<Button-1>", start)
+            self._world_event("<B1-Motion>", end)
+            self.assertIsNotNone(self.app._drag)
+            self.assertEqual(self.app._drag["kind"], "marquee")
+            self.assertEqual(len(self.app.canvas.find_withtag("selection-box")), 1)
+            self.assertEqual(self._state(), baseline)
+            self.assertEqual(tuple(self.app.history._snapshots), history)
+
+        # The left edge cuts pad 1, whose center is still inside the rectangle.
+        # Starting below it keeps the press on empty canvas rather than a pad.
+        begin_marquee((-4.1, -3), (3, 2))
+        self.assertEqual(self._export_bytes(), payload)
+        self._world_event("<ButtonRelease-1>", (3, 2))
+        self.assertEqual(self.app.selected_indices, {0, 1, 2})
+        self.assertNotIn(3, self.app.selected_indices)
+        self.assertFalse(self.app.canvas.find_withtag("selection-box"))
+        self.assertEqual(len(self.app.canvas.find_withtag("selection-outline")), 3)
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self.assertEqual(self._export_bytes(), payload)
+
+        ctrl_click(3)
+        self.assertEqual(self.app.selected_indices, {0, 1, 2, 3})
+        ctrl_click(1)
+        self.assertEqual(self.app.selected_indices, {0, 2, 3})
+        ctrl_click(3)
+        self.assertEqual(self.app.selected_indices, {0, 2})
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self.assertEqual(self._export_bytes(), payload)
+
+        first = originals[0]
+        start = self._world_event("<Button-1>", (first.x, first.y))
+        self.assertEqual(self.app._drag["kind"], "move")
+        self._world_event("<B1-Motion>", (first.x + 1, first.y + 0.5))
+        self.assertEqual(self.app.selected_indices, {0, 2})
+        self.assertEqual(self._state(), baseline)
+        end = self._world_event("<ButtonRelease-1>", (first.x + 1, first.y + 0.5))
+        delta = (end[0] - start[0], end[1] - start[1])
+        for index in (0, 2):
+            self._assert_point((self.app.sketch.pads[index].x, self.app.sketch.pads[index].y),
+                               (originals[index].x + delta[0], originals[index].y + delta[1]))
+        for index in (1, 3):
+            self.assertEqual(self.app.sketch.pads[index], originals[index])
+        self.assertEqual(tuple(self.app.history._snapshots)[:-1], history)
+        self.assertEqual(len(self.app.history._snapshots), len(history) + 1)
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+
+        self._click((first.x, first.y), world=True)
+        ctrl_click(2)
+        selection, primary = set(self.app.selected_indices), self.app.selected_index
+        self.assertEqual(selection, {0, 2})
+        for cancel in ("escape", "secondary"):
+            with self.subTest(marquee_cancel=cancel):
+                begin_marquee((3, -3), (6, 4))
+                if cancel == "escape":
+                    self._escape()
+                else:
+                    screen = self._screen((6, 4), world=True)
+                    self._event("<Button-3>", screen)
+                    self._event("<ButtonRelease-3>", screen)
+                self.assertIsNone(self.app._drag)
+                self.assertFalse(self.app.canvas.find_withtag("selection-box"))
+                self.assertEqual((self.app.selected_indices, self.app.selected_index), (selection, primary))
+                self.assertEqual(self._state(), baseline)
+                self.assertEqual(tuple(self.app.history._snapshots), history)
+                self._world_event("<ButtonRelease-1>", (6, 4))
+                self.assertEqual(self.app.selected_indices, selection)
+                self.assertEqual(self._state(), baseline)
+                self.assertEqual(self._export_bytes(), payload)
+                self.assertEqual(tuple(self.app.history._snapshots), history)
 
     def test_drag_creation_stays_in_tool_and_advances_only_the_next_number(self):
         self._calibrate()
@@ -940,6 +1078,36 @@ class GuiInteractionTests(unittest.TestCase):
                 self.assertEqual(self._export_bytes(), baseline)
                 self._world_event("<ButtonRelease-1>", end)
                 self.assertEqual(self._state(), snapshot)
+
+        self._button("矩形パッド")
+        history = tuple(self.app.history._snapshots)
+        start, end = (2, -1), (4, 1)
+        self._world_event("<Button-1>", start)
+        self._world_event("<B1-Motion>", end)
+        self.assertIsNotNone(self.app._preview_pad)
+        self.assertTrue(self.app.canvas.find_withtag("preview"))
+        screen = self._screen(end, world=True)
+        self._event("<Button-3>", screen)
+        self._event("<ButtonRelease-3>", screen)
+        self.assertEqual((self.app.mode, self.app.tool.get()), ("idle", "select"))
+        self.assertIsNone(self.app._drag)
+        self.assertIsNone(self.app._preview_pad)
+        self.assertFalse(self.app._preview_pads)
+        self.assertFalse(self.app._paste_previews)
+        self.assertFalse(self.app._snap_guides)
+        self.assertFalse(self.app.canvas.find_withtag("preview"))
+        self.assertFalse(self.app.canvas.find_withtag("center-snap-guide"))
+        self.assertEqual(self._state(), snapshot)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self._world_event("<ButtonRelease-1>", end)
+        self.assertEqual(self._state(), snapshot)
+        self.assertEqual(self._export_bytes(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self._draw("矩形パッド", start, end)
+        self.assertEqual(len(self.app.sketch.pads), 2)
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), snapshot)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
 
 
 if __name__ == "__main__":
