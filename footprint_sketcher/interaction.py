@@ -6,6 +6,7 @@ from dataclasses import replace
 import math
 
 from .model import Pad, Point, _HALF_NANOMETER_MM
+from .compound import CustomPad, hit_custom_pad
 
 
 _CORNER_SIGNS = ((-1, -1), (1, -1), (1, 1), (-1, 1))
@@ -20,6 +21,11 @@ def _rotation(pad: Pad) -> tuple[float, float]:
 def pad_corners(pad: Pad) -> list[Point]:
     """Return the rotated bounding rectangle's TL, TR, BR, BL corners."""
     cosine, sine = _rotation(pad)
+    if isinstance(pad, CustomPad):
+        left, right = min(x for x, _ in pad.outline), max(x for x, _ in pad.outline)
+        top, bottom = min(y for _, y in pad.outline), max(y for _, y in pad.outline)
+        local = ((left, top), (right, top), (right, bottom), (left, bottom))
+        return [(pad.x + x * cosine + y * sine, pad.y + y * cosine - x * sine) for x, y in local]
     return [
         (
             pad.x + sx * pad.width / 2 * cosine + sy * pad.height / 2 * sine,
@@ -31,6 +37,8 @@ def pad_corners(pad: Pad) -> list[Point]:
 
 def hit_pad(pad: Pad, point_mm: Point) -> bool:
     """Test the actual rectangle/roundrect outline, including its boundary."""
+    if isinstance(pad, CustomPad):
+        return hit_custom_pad(pad, point_mm)
     if not all(math.isfinite(value) for value in point_mm):
         return False
     cosine, sine = _rotation(pad)
@@ -56,6 +64,8 @@ def resize_pad(pad: Pad, corner_index: int, target_point_mm: Point) -> Pad:
     Crossing the fixed corner is rejected so a drag cannot silently swap handles
     or invert a pad. The caller can retain its last valid drag preview on error.
     """
+    if isinstance(pad, CustomPad):
+        raise ValueError("合体形状の寸法変更は、Undoで合体前へ戻して元の図形を編集してください。")
     if corner_index not in range(4):
         raise ValueError("サイズ変更の角は0から3で指定してください。")
     fixed = pad_corners(pad)[(corner_index + 2) % 4]

@@ -8,6 +8,7 @@ import tkinter as tk
 from PIL import Image, ImageTk
 
 from .model import AxisCalibration, Pad, Point, Sketch
+from .compound import CustomPad, world_paste_shapes
 
 
 SURFACE = "#ffffff"
@@ -313,7 +314,15 @@ class SketchCanvas(tk.Canvas):
         if preview:
             options["dash"] = (5, 3)
         self.create_polygon(self._clipped(vertices), **options)
+        if isinstance(pad, CustomPad):
+            for aperture in world_paste_shapes(pad):
+                opening = self._pad_vertices(aperture, sketch, pad_outline(aperture))
+                self.create_polygon(self._clipped(opening), fill="", outline="#b56e00", dash=(3, 3),
+                                    tags=("paste-opening",))
         cx, cy = self.image_to_canvas(sketch.mm_to_image((pad.x, pad.y)))
+        if isinstance(pad, CustomPad):
+            self.create_line(cx - 4, cy, cx + 4, cy, fill=BLUE, tags=("connection-point",))
+            self.create_line(cx, cy - 4, cx, cy + 4, fill=BLUE, tags=("connection-point",))
         if 0 <= cx <= self.winfo_width() and 0 <= cy <= self.winfo_height():
             self.create_text(cx, cy, text=pad.number, fill=INK)
 
@@ -331,6 +340,11 @@ class SketchCanvas(tk.Canvas):
             (pad.width / 2, pad.height / 2),
             (-pad.width / 2, pad.height / 2),
         ]
+        if isinstance(pad, CustomPad):
+            left, right = min(x for x, _ in pad.outline), max(x for x, _ in pad.outline)
+            top, bottom = min(y for _, y in pad.outline), max(y for _, y in pad.outline)
+            corners = [(left, top), (right, top), (right, bottom), (left, bottom)]
+            handles = False
         vertices = self._pad_vertices(pad, sketch, corners)
         self.create_polygon(
             self._clipped(vertices),
@@ -358,6 +372,8 @@ class SketchCanvas(tk.Canvas):
 
 
 def pad_outline(pad: Pad) -> list[Point]:
+    if isinstance(pad, CustomPad):
+        return list(pad.outline)
     left, right = -pad.width / 2, pad.width / 2
     top, bottom = -pad.height / 2, pad.height / 2
     radius = pad.radius

@@ -1,0 +1,579 @@
+{
+  "status": "completed",
+  "started_utc": "2026-11-22T18:03:20.141604+00:00",
+  "run": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1",
+  "python": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "cases": [
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+      "pads": [
+        {
+          "number": "1",
+          "x": -1.9722222222222214,
+          "y": -0.4583333333333317,
+          "width": 1.0735571585149861,
+          "height": 3.975800550557575,
+          "angle": 30.0,
+          "radius": 0.25
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          425.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.01665741511631924
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-1.pretty\\Editor_Case_1.kicad_mod",
+      "sha256": "719d2ba81827a4941b417a5f557ce3ac08331c8af5926f58a47046460ad2eb9d"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_center_snap_shift_axis_lock_and_group_move_keep_outside_pad_unchanged",
+      "pads": [
+        {
+          "number": "1",
+          "x": -4.0,
+          "y": -1.0,
+          "width": 1.0,
+          "height": 0.8,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "2",
+          "x": 0.0,
+          "y": 1.0,
+          "width": 1.0,
+          "height": 0.8,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "3",
+          "x": 4.0,
+          "y": -2.0,
+          "width": 1.0,
+          "height": 0.8,
+          "angle": 0.0,
+          "radius": 0.0
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-2.pretty\\Editor_Case_2.kicad_mod",
+      "sha256": "4dc382733cb58c03754073716f96f270787f96013df81f320b582932cad0142f"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_continuous_creation_skips_used_numbers_without_renumbering_existing_pads",
+      "pads": [
+        {
+          "number": "3",
+          "x": -4.0,
+          "y": -2.5,
+          "width": 2.0,
+          "height": 1.0,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "1",
+          "x": -1.0,
+          "y": -2.5,
+          "width": 2.0,
+          "height": 1.0,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "2",
+          "x": 2.0,
+          "y": 1.5,
+          "width": 2.0,
+          "height": 1.0,
+          "angle": 0.0,
+          "radius": 0.0
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-3.pretty\\Editor_Case_3.kicad_mod",
+      "sha256": "a76b6696cd1d6a020854b88d85f63ff937799526addbcf6654c8f9376069b9a5"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_drag_creation_stays_in_tool_and_advances_only_the_next_number",
+      "pads": [
+        {
+          "number": "1",
+          "x": -4.0,
+          "y": -2.5,
+          "width": 1.2320508075688774,
+          "height": 1.8660254037844386,
+          "angle": 30.0,
+          "radius": 0.0
+        },
+        {
+          "number": "2",
+          "x": -1.0,
+          "y": -2.5,
+          "width": 1.2320508075688774,
+          "height": 1.8660254037844386,
+          "angle": 30.0,
+          "radius": 0.0
+        },
+        {
+          "number": "3",
+          "x": 2.0,
+          "y": 1.5,
+          "width": 1.2320508075688774,
+          "height": 1.8660254037844386,
+          "angle": 30.0,
+          "radius": 0.25
+        },
+        {
+          "number": "4",
+          "x": 5.0,
+          "y": 1.5,
+          "width": 1.2320508075688774,
+          "height": 1.8660254037844386,
+          "angle": 30.0,
+          "radius": 0.25
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-4.pretty\\Editor_Case_4.kicad_mod",
+      "sha256": "6ca8ae433faec3ff944205bb2dd0e14510869ac7f94dc1f21465bb1c844bdb78"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_drag_shapes_move_rotate_all_resize_handles_and_apply_from_table",
+      "pads": [
+        {
+          "number": "R1",
+          "x": -3.0,
+          "y": -1.0,
+          "width": 1.8,
+          "height": 0.8,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "2",
+          "x": 1.1249999999999998,
+          "y": 0.8583333333333332,
+          "width": 0.3922335267640509,
+          "height": 1.1899891066762551,
+          "angle": 30.0,
+          "radius": 0.19611676338202544
+        },
+        {
+          "number": "1",
+          "x": 1.0,
+          "y": 3.0,
+          "width": 1.4142135623730951,
+          "height": 1.4142135623730951,
+          "angle": 45.0,
+          "radius": 0.0
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-5.pretty\\Editor_Case_5.kicad_mod",
+      "sha256": "991a5e63c882e3153b5315cea24201ec52c5d91a910e5a023ed97313f08ab3a6"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_entry_shortcuts_do_not_invoke_document_actions_or_os_clipboard",
+      "pads": [
+        {
+          "number": "1",
+          "x": -3.0,
+          "y": -1.0,
+          "width": 2.0,
+          "height": 2.0,
+          "angle": 0.0,
+          "radius": 0.0
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-6.pretty\\Editor_Case_6.kicad_mod",
+      "sha256": "27bb716bede3fbe89b126e0ce83ee1cfb5d7f64fff0c743714e74f913b289883"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_four_point_axis_lock_and_view_changes_preserve_anisotropic_calibration",
+      "pads": [
+        {
+          "number": "1",
+          "x": -3.0,
+          "y": -1.0,
+          "width": 2.0,
+          "height": 2.0,
+          "angle": 0.0,
+          "radius": 0.0
+        }
+      ],
+      "calibration": {
+        "x_a": [
+          150.0,
+          445.0
+        ],
+        "x_b": [
+          750.0,
+          445.0
+        ],
+        "x_distance": 10.0,
+        "y_a": [
+          300.0,
+          220.0
+        ],
+        "y_b": [
+          300.0,
+          340.0
+        ],
+        "y_distance": 4.0,
+        "mm_per_pixel_x": 0.016666666666666666,
+        "mm_per_pixel_y": 0.03333333333333333
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-7.pretty\\Editor_Case_7.kicad_mod",
+      "sha256": "2e80335fea1c1db54270d32adfc585921cbc87f2614cfcb0863e4fa6795c25fb"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_marquee_selection_ctrl_toggle_group_move_and_cancel_preserve_document",
+      "pads": [
+        {
+          "number": "1",
+          "x": -4.0,
+          "y": -2.0,
+          "width": 0.8,
+          "height": 0.6,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "2",
+          "x": -1.0,
+          "y": -1.0,
+          "width": 0.8,
+          "height": 0.6,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "3",
+          "x": 2.0,
+          "y": 1.0,
+          "width": 0.8,
+          "height": 0.6,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "4",
+          "x": 5.0,
+          "y": 3.0,
+          "width": 0.8,
+          "height": 0.6,
+          "angle": 0.0,
+          "radius": 0.0
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-8.pretty\\Editor_Case_8.kicad_mod",
+      "sha256": "ea7b8adf6e5c490577a8a3e6b8388e14bc612af16321b4a9cd0d674b27f9ddf7"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_multi_alignment_distribution_and_mass_attributes_preserve_numbers",
+      "pads": [
+        {
+          "number": "1",
+          "x": -5.0,
+          "y": -3.0,
+          "width": 0.8,
+          "height": 0.6,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "2",
+          "x": -2.0,
+          "y": -1.0,
+          "width": 0.8,
+          "height": 0.6,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "3",
+          "x": 4.0,
+          "y": 2.0,
+          "width": 0.8,
+          "height": 0.6,
+          "angle": 0.0,
+          "radius": 0.0
+        },
+        {
+          "number": "4",
+          "x": 6.0,
+          "y": 3.0,
+          "width": 0.8,
+          "height": 0.6,
+          "angle": 0.0,
+          "radius": 0.0
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-9.pretty\\Editor_Case_9.kicad_mod",
+      "sha256": "230222cf673d8de802d7e843a114407a120222612e4dccff12544b9fe4f65537"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_numeric_continuous_placement_frozen_copy_and_group_paste_undo",
+      "pads": [
+        {
+          "number": "1",
+          "x": -3.0,
+          "y": -1.0,
+          "width": 2.4,
+          "height": 0.8,
+          "angle": 0.0,
+          "radius": 0.2
+        },
+        {
+          "number": "2",
+          "x": 1.0,
+          "y": 1.0,
+          "width": 2.4,
+          "height": 0.8,
+          "angle": 0.0,
+          "radius": 0.2
+        },
+        {
+          "number": "3",
+          "x": -2.0,
+          "y": 1.0,
+          "width": 1.6,
+          "height": 1.2,
+          "angle": 30.0,
+          "radius": 0.25
+        },
+        {
+          "number": "4",
+          "x": 2.0,
+          "y": 3.0,
+          "width": 1.6,
+          "height": 1.2,
+          "angle": 30.0,
+          "radius": 0.25
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-10.pretty\\Editor_Case_10.kicad_mod",
+      "sha256": "82e6b9d852c34038ac7c0bf605c22b3009362c9dc8d211d54251e5ba5a23c48f"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_selection_and_cancelled_drag_previews_never_change_saved_geometry",
+      "pads": [
+        {
+          "number": "1",
+          "x": -1.0,
+          "y": 0.0,
+          "width": 2.0,
+          "height": 2.0,
+          "angle": 0.0,
+          "radius": 0.25
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-11.pretty\\Editor_Case_11.kicad_mod",
+      "sha256": "7103f59fa5d9389b77ed3997af8162281a50e80f2cabe38208558697b38bacfb"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_zoom_pan_during_calibration_and_display_changes_preserve_export",
+      "pads": [
+        {
+          "number": "1",
+          "x": -3.0,
+          "y": -1.0,
+          "width": 2.0,
+          "height": 2.0,
+          "angle": 0.0,
+          "radius": 0.0
+        }
+      ],
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666
+      },
+      "origin": [
+        450.0,
+        280.0
+      ],
+      "output": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T180320Z-2fdf76d1\\case-12.pretty\\Editor_Case_12.kicad_mod",
+      "sha256": "bcc403dbc3cfc47f9448fca9caa9502fce4caaf466569340f2c2844d46259da3"
+    }
+  ],
+  "commit": "15d8c1489d7ba979231067278fc2525de64ea75a",
+  "source_sha256": {
+    "footprint_sketcher/gui.py": "9499f9a27fbcafb3b61f2f13782dfbfb2c67057fa9abefbfa25be0864c7281a5",
+    "footprint_sketcher/canvas.py": "a0a55193ed0ea5b6f5efb4e0a70bc109e29a5b6beaf3d9264ade2e3bfe08f545",
+    "footprint_sketcher/interaction.py": "a3dedff32e8ceec64108d81999b18bb298be60658b6aa7a94aa349678fc32d9a",
+    "footprint_sketcher/model.py": "21ab83eae65ba54c381536d80a67eaf736543d6981062d0c7f8082a39e575bec",
+    "footprint_sketcher/editing.py": "ada2392e559660d391e6e34dcf506df3ab14d83d81a0e0d4eac222926a9ac1a1"
+  },
+  "tests_run": 44,
+  "failures": 0,
+  "errors": 0,
+  "skipped": [],
+  "finished_utc": "2026-11-22T18:03:48.260488+00:00",
+  "log": "test_image_and_millimeter_roundtrips (test_axis_calibration.AxisCalibrationTests.test_image_and_millimeter_roundtrips) ... ok\ntest_invalid_axis_calibration_keeps_previous_calibration_origin_and_pads (test_axis_calibration.AxisCalibrationTests.test_invalid_axis_calibration_keeps_previous_calibration_origin_and_pads) ... ok\ntest_legacy_calibration_serialization_and_uniform_transform_are_preserved (test_axis_calibration.AxisCalibrationTests.test_legacy_calibration_serialization_and_uniform_transform_are_preserved) ... ok\ntest_nonuniform_scales_transform_each_axis_independently (test_axis_calibration.AxisCalibrationTests.test_nonuniform_scales_transform_each_axis_independently) ... ok\ntest_origin_move_preserves_pad_image_placement_and_dimensions (test_axis_calibration.AxisCalibrationTests.test_origin_move_preserves_pad_image_placement_and_dimensions) ... ok\ntest_pair_locations_do_not_couple_axis_scales (test_axis_calibration.AxisCalibrationTests.test_pair_locations_do_not_couple_axis_scales) ... ok\ntest_reversed_pairs_do_not_reverse_coordinate_axes (test_axis_calibration.AxisCalibrationTests.test_reversed_pairs_do_not_reverse_coordinate_axes) ... ok\ntest_unrepresentable_scales_are_rejected (test_axis_calibration.AxisCalibrationTests.test_unrepresentable_scales_are_rejected) ... ok\ntest_copy_can_explicitly_preserve_numbers (test_editing.GroupEditingTests.test_copy_can_explicitly_preserve_numbers) ... ok\ntest_copy_preserves_relative_centers_dimensions_and_immutable_clipboard (test_editing.GroupEditingTests.test_copy_preserves_relative_centers_dimensions_and_immutable_clipboard) ... ok\ntest_distribution_sorts_centers_and_fixes_both_extremes (test_editing.GroupEditingTests.test_distribution_sorts_centers_and_fixes_both_extremes) ... ok\ntest_invalid_copy_is_atomic (test_editing.GroupEditingTests.test_invalid_copy_is_atomic) ... ok\ntest_invalid_group_operations_do_not_mutate_originals (test_editing.GroupEditingTests.test_invalid_group_operations_do_not_mutate_originals) ... ok\ntest_last_alignment_uses_selection_order_not_index_or_position_order (test_editing.GroupEditingTests.test_last_alignment_uses_selection_order_not_index_or_position_order) ... ok\ntest_mean_alignment_changes_only_selected_coordinate (test_editing.GroupEditingTests.test_mean_alignment_changes_only_selected_coordinate) ... ok\ntest_vertical_distribution_retains_horizontal_positions (test_editing.GroupEditingTests.test_vertical_distribution_retains_horizontal_positions) ... ok\ntest_duplicate_checkpoints_do_not_add_an_extra_undo_step (test_editing.SnapshotTests.test_duplicate_checkpoints_do_not_add_an_extra_undo_step) ... ok\ntest_empty_and_uniform_calibration_states_can_be_restored (test_editing.SnapshotTests.test_empty_and_uniform_calibration_states_can_be_restored) ... ok\ntest_snapshot_captures_immutable_calibration_origin_and_pads (test_editing.SnapshotTests.test_snapshot_captures_immutable_calibration_origin_and_pads) ... ok\ntest_undo_restores_entire_state_and_preserves_pad_list_identity (test_editing.SnapshotTests.test_undo_restores_entire_state_and_preserves_pad_list_identity) ... ok\ntest_undo_skips_current_state_and_clear_forgets_history (test_editing.SnapshotTests.test_undo_skips_current_state_and_clear_forgets_history) ... ok\ntest_equivalent_angles_are_exported_within_one_turn (test_export_angle.ExportAngleTests.test_equivalent_angles_are_exported_within_one_turn) ... ok\ntest_anisotropic_pad_edit_handles_and_uniform_calibration_switch (test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch) ... ok\ntest_center_snap_shift_axis_lock_and_group_move_keep_outside_pad_unchanged (test_gui_interactions.GuiInteractionTests.test_center_snap_shift_axis_lock_and_group_move_keep_outside_pad_unchanged) ... ok\ntest_continuous_creation_skips_used_numbers_without_renumbering_existing_pads (test_gui_interactions.GuiInteractionTests.test_continuous_creation_skips_used_numbers_without_renumbering_existing_pads) ... ok\ntest_drag_creation_stays_in_tool_and_advances_only_the_next_number (test_gui_interactions.GuiInteractionTests.test_drag_creation_stays_in_tool_and_advances_only_the_next_number) ... ok\ntest_drag_shapes_move_rotate_all_resize_handles_and_apply_from_table (test_gui_interactions.GuiInteractionTests.test_drag_shapes_move_rotate_all_resize_handles_and_apply_from_table) ... ok\ntest_entry_shortcuts_do_not_invoke_document_actions_or_os_clipboard (test_gui_interactions.GuiInteractionTests.test_entry_shortcuts_do_not_invoke_document_actions_or_os_clipboard) ... ok\ntest_four_point_axis_lock_and_view_changes_preserve_anisotropic_calibration (test_gui_interactions.GuiInteractionTests.test_four_point_axis_lock_and_view_changes_preserve_anisotropic_calibration) ... ok\ntest_marquee_selection_ctrl_toggle_group_move_and_cancel_preserve_document (test_gui_interactions.GuiInteractionTests.test_marquee_selection_ctrl_toggle_group_move_and_cancel_preserve_document) ... ok\ntest_multi_alignment_distribution_and_mass_attributes_preserve_numbers (test_gui_interactions.GuiInteractionTests.test_multi_alignment_distribution_and_mass_attributes_preserve_numbers) ... ok\ntest_numeric_continuous_placement_frozen_copy_and_group_paste_undo (test_gui_interactions.GuiInteractionTests.test_numeric_continuous_placement_frozen_copy_and_group_paste_undo) ... ok\ntest_selection_and_cancelled_drag_previews_never_change_saved_geometry (test_gui_interactions.GuiInteractionTests.test_selection_and_cancelled_drag_previews_never_change_saved_geometry) ... ok\ntest_undo_commits_pending_points_drag_cancel_and_image_change (test_gui_interactions.GuiInteractionTests.test_undo_commits_pending_points_drag_cancel_and_image_change) ... ok\ntest_zoom_pan_during_calibration_and_display_changes_preserve_export (test_gui_interactions.GuiInteractionTests.test_zoom_pan_during_calibration_and_display_changes_preserve_export) ... ok\ntest_counterclockwise_corners_and_hit_at_thirty_degrees (test_interaction.PadInteractionTests.test_counterclockwise_corners_and_hit_at_thirty_degrees) ... ok\ntest_crossing_fixed_corner_is_rejected_without_mutation (test_interaction.PadInteractionTests.test_crossing_fixed_corner_is_rejected_without_mutation) ... ok\ntest_every_handle_keeps_its_opposite_corner_when_rotated (test_interaction.PadInteractionTests.test_every_handle_keeps_its_opposite_corner_when_rotated) ... ok\ntest_resize_clamps_radius_to_new_short_side (test_interaction.PadInteractionTests.test_resize_clamps_radius_to_new_short_side) ... ok\ntest_resize_rejects_nonfinite_or_unrepresentable_geometry (test_interaction.PadInteractionTests.test_resize_rejects_nonfinite_or_unrepresentable_geometry) ... ok\ntest_rotated_resize_keeps_opposite_corner_and_original_unchanged (test_interaction.PadInteractionTests.test_rotated_resize_keeps_opposite_corner_and_original_unchanged) ... ok\ntest_roundrect_cutout_is_not_selectable_after_rotation (test_interaction.PadInteractionTests.test_roundrect_cutout_is_not_selectable_after_rotation) ... ok\ntest_roundrect_resize_rejects_unrepresentable_radius_without_rectangularizing (test_interaction.PadInteractionTests.test_roundrect_resize_rejects_unrepresentable_radius_without_rectangularizing) ... ok\ntest_very_large_angles_have_equivalent_finite_geometry (test_interaction.PadInteractionTests.test_very_large_angles_have_equivalent_finite_geometry) ... ok\n\n----------------------------------------------------------------------\nRan 44 tests in 27.593s\n\nOK\n"
+}

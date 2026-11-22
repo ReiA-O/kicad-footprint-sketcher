@@ -14,6 +14,7 @@ from PIL import Image
 from .canvas import SketchCanvas, pad_outline
 from .interaction import hit_pad, pad_corners, resize_pad
 from .editing import Snapshot, UndoHistory, align_centers, distribute_centers, duplicate_pads
+from .compound import CustomPad, merge_pads, fillet_pad
 from .model import PAD_LAYERS, AxisCalibration, Calibration, Pad, Point, Sketch, export_footprint
 
 
@@ -26,7 +27,7 @@ TEAL = "#08695e"
 BLUE = "#234f9a"
 ERROR = "#9b3324"
 
-Mode = Literal["idle", "calibration", "origin", "pad", "draw", "paste"]
+Mode = Literal["idle", "calibration", "origin", "pad", "draw", "paste", "fillet"]
 AXIS_METHOD = "横2点＋縦2点（標準）"
 UNIFORM_METHOD = "2点・共通縮尺（補助）"
 
@@ -70,6 +71,8 @@ class SketcherApp:
         self.zoom_label = tk.StringVar(root, "100%")
         self.center_snap = tk.BooleanVar(root, True)
         self.selection_label = tk.StringVar(root, "選択 0個")
+        self.merge_number = tk.StringVar(root)
+        self.fillet_radius = tk.StringVar(root, "0.25")
 
         self.image_name = tk.StringVar(root, "下絵未選択")
         self.distance = tk.StringVar(root)
@@ -97,11 +100,17 @@ class SketcherApp:
 
     @selected_index.setter
     def selected_index(self, index: int | None) -> None:
+        chosen = {index} if index is not None else set()
+        if chosen != self.selected_indices:
+            self.merge_number.set("")
         self._selected_index = index
-        self.selected_indices = {index} if index is not None else set()
+        self.selected_indices = chosen
 
     def _set_selection(self, indices, primary: int | None = None) -> None:
-        self.selected_indices = {index for index in indices if 0 <= index < len(self.sketch.pads)}
+        chosen = {index for index in indices if 0 <= index < len(self.sketch.pads)}
+        if chosen != self.selected_indices:
+            self.merge_number.set("")
+        self.selected_indices = chosen
         self._selected_index = (primary if primary in self.selected_indices else
                                 max(self.selected_indices) if self.selected_indices else None)
 
@@ -386,12 +395,21 @@ class SketcherApp:
         self._width_entry = self._field(panel, "幅 (mm)", self.pad_width, 13, 0)
         self._height_entry = self._field(panel, "高さ (mm)", self.pad_height, 13, 1)
         self._field(panel, "角度 (°・反時計回り)", self.pad_angle, 15, 0)
-        self._field(panel, "角のR (mm)", self.pad_radius, 15, 1)
+        self._radius_entry = self._field(panel, "角のR (mm)", self.pad_radius, 15, 1)
         self._number_entry = self._field(panel, "パッド番号", self.pad_number, 17, 0)
         self._placement_button = ttk.Button(panel, text="パッドを配置", command=self.begin_placement)
         self._placement_button.grid(row=18, column=1, sticky="ew", padx=(3, 0))
         self._selection_button = ttk.Button(panel, text="選択パッドに適用", command=self.apply_selected)
         self._selection_button.grid(row=19, column=0, columnspan=2, sticky="ew", pady=(7, 0))
+        self._section(panel, "形状の合体・フィレット", 20)
+        self._field(panel, "合体後の端子番号", self.merge_number, 22, 0)
+        self._merge_button = ttk.Button(panel, text="選択図形を合体", command=self.merge_selected)
+        self._merge_button.grid(row=23, column=1, sticky="ew", padx=(3, 0))
+        self._field(panel, "フィレットR (mm)", self.fillet_radius, 24, 0)
+        self._fillet_button = ttk.Button(panel, text="角を選んでフィレット", command=self.begin_fillet)
+        self._fillet_button.grid(row=25, column=1, sticky="ew", padx=(3, 0))
+        ttk.Label(panel, text="銅箔・Maskは合体、Pasteは元の開口を保持。\n金色の点線はPaste、十字は接続点です。\n合体後の寸法変更はUndoで合体前に戻します。",
+                  style="Hint.TLabel").grid(row=26, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
     @staticmethod
     def _section(panel: ttk.Frame, title: str, row: int) -> None:
@@ -420,6 +438,7 @@ class SketcherApp:
     def _refresh(self) -> None:
         calibration = self.sketch.calibration
         can_place = calibration is not None and self.sketch.origin is not None
+        has_custom = any(isinstance(self.sketch.pads[index], CustomPad) for index in self.selected_indices)
         for widget, enabled in (
             (self._undo_button, self.history.can_undo or bool(self.calibration_points) or self._drag is not None),
             (self._copy_button, bool(self.selected_indices)),
@@ -433,13 +452,18 @@ class SketcherApp:
             (self._numeric_tool, can_place),
             (self._export_button, bool(self.sketch.pads)),
             (self._selection_button,
-             self.mode == "idle" and self._drag is None and self.selected_index is not None),
+             self.mode == "idle" and self._drag is None and self.selected_index is not None
+             and not (has_custom and len(self.selected_indices) > 1)),
+            (self._merge_button, self.mode == "idle" and len(self.selected_indices) >= 2),
+            (self._fillet_button, self.mode == "idle" and len(self.selected_indices) == 1 and has_custom),
             *[(button, can_place) for button in self._draw_buttons],
             *[(button, self.mode == "idle" and len(self.selected_indices) >= minimum)
               for button, minimum in self._align_buttons],
         ):
             widget.state(["!disabled"] if enabled else ["disabled"])
         self._number_entry.state(["disabled"] if len(self.selected_indices) > 1 else ["!disabled"])
+        for entry in (self._width_entry, self._height_entry, self._radius_entry):
+            entry.state(["disabled"] if has_custom and self.mode in ("idle", "fillet") else ["!disabled"])
         self.selection_label.set(f"選択 {len(self.selected_indices)}個")
         self._calibration_button.configure(text="横2点＋縦2点を選ぶ" if self._axis_method() else "校正の2点を選ぶ")
         if calibration is None:
@@ -466,6 +490,12 @@ class SketcherApp:
             b = self.canvas.image_to_canvas(self.sketch.mm_to_image(self._drag["end"]))
             self.canvas.create_rectangle(*a, *b, outline=BLUE, width=2, dash=(4, 3),
                                          tags=("selection-box",))
+        if self.mode == "fillet" and self.selected_index is not None:
+            pad = self.sketch.pads[self.selected_index]
+            if isinstance(pad, CustomPad):
+                for index, (x, y) in enumerate(self._corner_screens(pad)):
+                    self.canvas.create_oval(x - 4, y - 4, x + 4, y + 4, fill=SURFACE,
+                                            outline=BLUE, width=2, tags=("fillet-corner", f"fillet-corner-{index}"))
         self.zoom_label.set(f"{self.canvas.scale * 100:.0f}%")
 
     def _refresh_pad_list(self) -> None:
@@ -833,13 +863,88 @@ class SketcherApp:
         self._refresh()
         self._message("両端を固定して中心を等間隔に配置しました。" if spacing else "選択したパッドの平均中心線に揃えました。")
 
+    def merge_selected(self) -> None:
+        if self.mode != "idle" or len(self.selected_indices) < 2:
+            return
+        before = Snapshot.capture(self.sketch)
+        indices = sorted(self.selected_indices)
+        try:
+            merged = merge_pads([self.sketch.pads[index] for index in indices], self.merge_number.get())
+            ensure_drawable(minimum_scale(self.sketch.calibration), [merged])
+        except ValueError as error:
+            self._message(str(error), error=True)
+            return
+        remaining = [pad for index, pad in enumerate(self.sketch.pads) if index not in self.selected_indices]
+        remaining.insert(indices[0], merged)
+        self.sketch.pads[:] = remaining
+        self.selected_index = indices[0]
+        self._record_change(before)
+        self._fill_pad_fields(merged)
+        self._refresh_pad_list()
+        self._refresh()
+        self._message(f"端子番号 {merged.number} の1個のパッドに合体しました。Pasteは元の各開口を保持しています。")
+
+    def begin_fillet(self) -> None:
+        if len(self.selected_indices) != 1 or self.selected_index is None:
+            return
+        if not isinstance(self.sketch.pads[self.selected_index], CustomPad):
+            return
+        self._clear_preview()
+        self.calibration_points.clear()
+        self.mode = "fillet"
+        self.tool.set("")
+        self._message("フィレットRをmmで入力し、丸めたい角の丸印をクリックしてください。右クリックまたはEscで終了します。")
+        self._refresh()
+
+    def _corner_screens(self, pad: CustomPad) -> list[Point]:
+        angle = math.radians(pad.angle % 360)
+        cosine, sine = math.cos(angle), math.sin(angle)
+        return [self.canvas.image_to_canvas(self.sketch.mm_to_image((
+            pad.x + x * cosine + y * sine, pad.y + y * cosine - x * sine,
+        ))) for x, y in pad.corners]
+
+    def _fillet_at(self, event: tk.Event) -> None:
+        if self.selected_index is None:
+            return
+        original = self.sketch.pads[self.selected_index]
+        if not isinstance(original, CustomPad):
+            return
+        screens = self._corner_screens(original)
+        if not screens:
+            self._message("フィレットを付けられる直線の角がありません。", error=True)
+            return
+        index = min(range(len(screens)), key=lambda item: math.dist(screens[item], (event.x, event.y)))
+        if math.dist(screens[index], (event.x, event.y)) > 12:
+            self._message("丸める角の丸印をクリックしてください。", error=True)
+            return
+        before = Snapshot.capture(self.sketch)
+        try:
+            radius = self._read_number(self.fillet_radius, "フィレットR")
+            candidate = fillet_pad(original, index, radius)
+            ensure_drawable(minimum_scale(self.sketch.calibration), [candidate])
+        except ValueError as error:
+            self._message(str(error), error=True)
+            return
+        self.sketch.pads[self.selected_index] = candidate
+        self._record_change(before)
+        self._fill_pad_fields(candidate)
+        self._refresh_pad_list()
+        self._refresh()
+        self._message(f"選んだ角にR {radius:g} mmを適用しました。Paste開口は保持し、続けて別の角を選べます。")
+
     def apply_selected(self) -> None:
         if self.mode != "idle" or self._drag is not None or self.selected_index is None:
             return
         original = self.sketch.pads[self.selected_index]
         before = Snapshot.capture(self.sketch)
         try:
+            if len(self.selected_indices) > 1 and any(isinstance(self.sketch.pads[index], CustomPad) for index in self.selected_indices):
+                raise ValueError("合体形状を含む一括寸法変更には対応していません。合体前にUndoして元の図形を編集してください。")
             candidate = self._pad_at((original.x, original.y))
+            if isinstance(original, CustomPad):
+                if (candidate.width, candidate.height, candidate.radius) != (original.width, original.height, 0):
+                    raise ValueError("合体形状の寸法変更は、Undoで合体前へ戻して元の図形を編集してください。")
+                candidate = replace(original, number=candidate.number, angle=candidate.angle)
             replacements = {index: (candidate if len(self.selected_indices) == 1 else
                             replace(self.sketch.pads[index], width=candidate.width, height=candidate.height,
                                     angle=candidate.angle, radius=candidate.radius))
@@ -861,6 +966,9 @@ class SketcherApp:
 
     def _on_canvas_press(self, event: tk.Event) -> None:
         self.canvas.focus_set()
+        if self.mode == "fillet":
+            self._fillet_at(event)
+            return
         if self.mode in ("calibration", "origin", "pad"):
             self._on_canvas_click(event)
             return
@@ -891,7 +999,7 @@ class SketcherApp:
             self._refresh_pad_list()
             self._refresh()
             return
-        if self.selected_index is not None and len(self.selected_indices) == 1:
+        if self.selected_index is not None and len(self.selected_indices) == 1 and not isinstance(self.sketch.pads[self.selected_index], CustomPad):
             pad = self.sketch.pads[self.selected_index]
             for corner, position in enumerate(pad_corners(pad)):
                 screen = self.canvas.image_to_canvas(self.sketch.mm_to_image(position))
@@ -1155,7 +1263,7 @@ class SketcherApp:
             self._refresh()
 
     def _on_secondary_click(self, event: tk.Event) -> str | None:
-        if self.mode in ("draw", "pad", "paste") or (self._drag is not None and self._drag["kind"] == "marquee"):
+        if self.mode in ("draw", "pad", "paste", "fillet") or (self._drag is not None and self._drag["kind"] == "marquee"):
             self._cancel_action(event)
             return "break"
         return None
