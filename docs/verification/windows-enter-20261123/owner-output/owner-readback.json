@@ -1,0 +1,204 @@
+{
+  "status": "completed",
+  "timestamp_utc": "2026-11-22T19:10:23.835050+00:00",
+  "version": "10.0.7",
+  "source_filename": "NE555_SOIC8_Practice.kicad_mod",
+  "sha256": "5115c8367cb2f9dc158f2bc111c2a7c7d08a30bafe8b0a64ae1df265f8f26427",
+  "owner_feedback": "これを使って作った成果物はいい感じ",
+  "generator_commit": "unidentified",
+  "pads": [
+    {
+      "number": "4",
+      "shape": "roundrect",
+      "smd": true,
+      "x": -2.713529,
+      "y": 1.910574,
+      "width": 1.55,
+      "height": 0.6,
+      "angle": 0.0,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Mask",
+        "F.Paste"
+      ],
+      "difference_from_file": {
+        "x": -1.3864993420042993e-07,
+        "y": -2.647500760843968e-07,
+        "width": 0.0,
+        "height": 0.0,
+        "angle": 0.0,
+        "radius": 0.0
+      }
+    },
+    {
+      "number": "3",
+      "shape": "roundrect",
+      "smd": true,
+      "x": -2.713529,
+      "y": 0.635557,
+      "width": 1.55,
+      "height": 0.6,
+      "angle": 0.0,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Mask",
+        "F.Paste"
+      ],
+      "difference_from_file": {
+        "x": -1.3864993420042993e-07,
+        "y": 2.0188545535315683e-07,
+        "width": 0.0,
+        "height": 0.0,
+        "angle": 0.0,
+        "radius": 0.0
+      }
+    },
+    {
+      "number": "5",
+      "shape": "roundrect",
+      "smd": true,
+      "x": 2.687563,
+      "y": 1.910574,
+      "width": 1.55,
+      "height": 0.6,
+      "angle": 0.0,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Mask",
+        "F.Paste"
+      ],
+      "difference_from_file": {
+        "x": -1.1561774959645277e-07,
+        "y": -2.647500760843968e-07,
+        "width": 0.0,
+        "height": 0.0,
+        "angle": 0.0,
+        "radius": 0.0
+      }
+    },
+    {
+      "number": "6",
+      "shape": "roundrect",
+      "smd": true,
+      "x": 2.687563,
+      "y": 0.635557,
+      "width": 1.55,
+      "height": 0.6,
+      "angle": 0.0,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Mask",
+        "F.Paste"
+      ],
+      "difference_from_file": {
+        "x": -1.1561774959645277e-07,
+        "y": 2.0188545535315683e-07,
+        "width": 0.0,
+        "height": 0.0,
+        "angle": 0.0,
+        "radius": 0.0
+      }
+    },
+    {
+      "number": "1",
+      "shape": "roundrect",
+      "smd": true,
+      "x": -2.713529,
+      "y": -1.910574,
+      "width": 1.55,
+      "height": 0.6,
+      "angle": 0.0,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Mask",
+        "F.Paste"
+      ],
+      "difference_from_file": {
+        "x": -1.3864993420042993e-07,
+        "y": 2.647500760843968e-07,
+        "width": 0.0,
+        "height": 0.0,
+        "angle": 0.0,
+        "radius": 0.0
+      }
+    },
+    {
+      "number": "2",
+      "shape": "roundrect",
+      "smd": true,
+      "x": -2.713529,
+      "y": -0.635557,
+      "width": 1.55,
+      "height": 0.6,
+      "angle": 0.0,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Mask",
+        "F.Paste"
+      ],
+      "difference_from_file": {
+        "x": -1.3864993420042993e-07,
+        "y": -2.0188545535315683e-07,
+        "width": 0.0,
+        "height": 0.0,
+        "angle": 0.0,
+        "radius": 0.0
+      }
+    },
+    {
+      "number": "8",
+      "shape": "roundrect",
+      "smd": true,
+      "x": 2.687563,
+      "y": -1.910574,
+      "width": 1.55,
+      "height": 0.6,
+      "angle": 0.0,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Mask",
+        "F.Paste"
+      ],
+      "difference_from_file": {
+        "x": -1.1561774959645277e-07,
+        "y": 2.647500760843968e-07,
+        "width": 0.0,
+        "height": 0.0,
+        "angle": 0.0,
+        "radius": 0.0
+      }
+    },
+    {
+      "number": "7",
+      "shape": "roundrect",
+      "smd": true,
+      "x": 2.687563,
+      "y": -0.635557,
+      "width": 1.55,
+      "height": 0.6,
+      "angle": 0.0,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Mask",
+        "F.Paste"
+      ],
+      "difference_from_file": {
+        "x": -1.1561774959645277e-07,
+        "y": -2.0188545535315683e-07,
+        "width": 0.0,
+        "height": 0.0,
+        "angle": 0.0,
+        "radius": 0.0
+      }
+    }
+  ],
+  "method": "Windows KiCad FootprintLoad API; owner feedback does not identify the generator commit or confirm the editor screen/checker."
+}

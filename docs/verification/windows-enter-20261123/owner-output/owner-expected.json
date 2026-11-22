@@ -1,0 +1,128 @@
+{
+  "source_filename": "NE555_SOIC8_Practice.kicad_mod",
+  "sha256": "5115c8367cb2f9dc158f2bc111c2a7c7d08a30bafe8b0a64ae1df265f8f26427",
+  "owner_feedback": "これを使って作った成果物はいい感じ",
+  "generator_commit": "unidentified",
+  "pads": [
+    {
+      "number": "4",
+      "shape": "roundrect",
+      "x": -2.7135288613500657,
+      "y": 1.910574264750076,
+      "angle": 0.0,
+      "width": 1.55,
+      "height": 0.6,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Paste",
+        "F.Mask"
+      ]
+    },
+    {
+      "number": "3",
+      "shape": "roundrect",
+      "x": -2.7135288613500657,
+      "y": 0.6355567981145447,
+      "angle": 0.0,
+      "width": 1.55,
+      "height": 0.6,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Paste",
+        "F.Mask"
+      ]
+    },
+    {
+      "number": "5",
+      "shape": "roundrect",
+      "x": 2.6875631156177495,
+      "y": 1.910574264750076,
+      "angle": 0.0,
+      "width": 1.55,
+      "height": 0.6,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Paste",
+        "F.Mask"
+      ]
+    },
+    {
+      "number": "6",
+      "shape": "roundrect",
+      "x": 2.6875631156177495,
+      "y": 0.6355567981145447,
+      "angle": 0.0,
+      "width": 1.55,
+      "height": 0.6,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Paste",
+        "F.Mask"
+      ]
+    },
+    {
+      "number": "1",
+      "shape": "roundrect",
+      "x": -2.7135288613500657,
+      "y": -1.910574264750076,
+      "angle": 0.0,
+      "width": 1.55,
+      "height": 0.6,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Paste",
+        "F.Mask"
+      ]
+    },
+    {
+      "number": "2",
+      "shape": "roundrect",
+      "x": -2.7135288613500657,
+      "y": -0.6355567981145447,
+      "angle": 0.0,
+      "width": 1.55,
+      "height": 0.6,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Paste",
+        "F.Mask"
+      ]
+    },
+    {
+      "number": "8",
+      "shape": "roundrect",
+      "x": 2.6875631156177495,
+      "y": -1.910574264750076,
+      "angle": 0.0,
+      "width": 1.55,
+      "height": 0.6,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Paste",
+        "F.Mask"
+      ]
+    },
+    {
+      "number": "7",
+      "shape": "roundrect",
+      "x": 2.6875631156177495,
+      "y": -0.6355567981145447,
+      "angle": 0.0,
+      "width": 1.55,
+      "height": 0.6,
+      "radius": 0.05,
+      "layers": [
+        "F.Cu",
+        "F.Paste",
+        "F.Mask"
+      ]
+    }
+  ]
+}
