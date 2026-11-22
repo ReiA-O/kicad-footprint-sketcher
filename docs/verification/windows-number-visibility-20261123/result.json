@@ -1,0 +1,439 @@
+{
+  "source_commit": "3611ebffaf1c5398a2dab6de1a9924fdd932b529",
+  "published_equivalent_source_commit": "00897aa8715faf8e493ad1a04e8a12a5a39edc73",
+  "identical_source_repository_tree": "031eee4ac5bcd9949f71f89af3d9b9918754be9d",
+  "started_utc": "2026-11-22T18:52:34.373657+00:00",
+  "finished_utc": "2026-11-22T18:53:33.509904+00:00",
+  "tests": 69,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "source_sha256": {
+    "footprint_sketcher/gui.py": "0d21ed0fa5268c277af13806469a825b9dd9791569b5382a7b92adf9c3aa7d69",
+    "footprint_sketcher/canvas.py": "7c29fddae03b0657ba6b8d64ef46fff90bd8a3e59e5e5680542b00bc876bae42",
+    "footprint_sketcher/interaction.py": "261457ccbf828120042b34a533478df03859da5fa66af59a7214b55e2e478727",
+    "footprint_sketcher/model.py": "3536fed3aebc7127a7b15052f17d009af5763910df294c3de7f299d772896368",
+    "footprint_sketcher/editing.py": "914d0a09b04eecc62dd6e37b54d8ba2bfdf7d47268e69a2a6991562a921eef6c",
+    "footprint_sketcher/compound.py": "351ca3a0b0a30b2517a93d79cfc5410a8951ccc86cd8b3b55a9139d8172904dc",
+    "requirements.txt": "e9481dd283d5565f7629563115d1f3dcdb4d65b8928bbc42ef521b7f687c829c"
+  },
+  "python": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+  "pillow": "12.3.0",
+  "shapely": "2.2.0",
+  "numpy": "2.5.5",
+  "label_render": {
+    "observations": 618,
+    "center_cross_overlaps": 0,
+    "minimum_center_distance_px": 11.672617529928752,
+    "colors_seen": [
+      "#ffffff"
+    ],
+    "font": {
+      "family": "Yu Gothic UI",
+      "size": 16,
+      "weight": "bold",
+      "slant": "roman",
+      "underline": 0,
+      "overstrike": 0
+    },
+    "samples": [
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          434.0,
+          284.0
+        ],
+        "text_and_outline_bbox_px": [
+          442,
+          243,
+          454,
+          275
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          434.0,
+          284.0
+        ],
+        "text_and_outline_bbox_px": [
+          442,
+          243,
+          454,
+          275
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          434.0,
+          284.0
+        ],
+        "text_and_outline_bbox_px": [
+          442,
+          243,
+          454,
+          275
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          451.0,
+          275.0
+        ],
+        "text_and_outline_bbox_px": [
+          459,
+          234,
+          471,
+          266
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          451.0,
+          275.0
+        ],
+        "text_and_outline_bbox_px": [
+          459,
+          234,
+          471,
+          266
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          523.0,
+          293.0
+        ],
+        "text_and_outline_bbox_px": [
+          531,
+          252,
+          543,
+          284
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          516.0,
+          289.50000000000006
+        ],
+        "text_and_outline_bbox_px": [
+          524,
+          249,
+          536,
+          281
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          513.0,
+          284.0
+        ],
+        "text_and_outline_bbox_px": [
+          521,
+          243,
+          533,
+          275
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      }
+    ]
+  },
+  "kicad": {
+    "version": "10.0.7",
+    "status": "completed",
+    "outputs": 35,
+    "logical_pads": 64,
+    "entities": 102,
+    "custom": 18,
+    "apertures": 38,
+    "max_abs_scalar_mm": 4.845413263954157e-07,
+    "max_abs_angle": 0.0,
+    "max_outline_vertex_edge_mm": 4.966475205121781e-07
+  },
+  "export_manifest": [
+    {
+      "file": "case-1.pretty/Editor_Case_1.kicad_mod",
+      "sha256": "719d2ba81827a4941b417a5f557ce3ac08331c8af5926f58a47046460ad2eb9d",
+      "reference": "../windows-number-mirror-20261123/case-1.pretty/Editor_Case_1.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-6.pretty/Editor_Case_6.kicad_mod",
+      "sha256": "915bfb19a2dd07bb99a6a1861bab07deb2c0ad9575148e78c9a8caab392bce96",
+      "reference": "../windows-number-mirror-20261123/case-6.pretty/Editor_Case_6.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-8.pretty/Editor_Case_8.kicad_mod",
+      "sha256": "32efe95e5ed6789d041239c346c1b64253b57836868979075412ef702814ca05",
+      "reference": "../windows-number-mirror-20261123/case-8.pretty/Editor_Case_8.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-30.pretty/Editor_Case_30.kicad_mod",
+      "sha256": "c7555fe718ce772c4786a988f070d581a3c78f2c28dca1e02d66e6bdb2dbf5a3",
+      "reference": "../windows-number-mirror-20261123/case-30.pretty/Editor_Case_30.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-2.pretty/Editor_Case_2.kicad_mod",
+      "sha256": "41089ecf2272291e24bd83f1053ed72100f3d2c696011dec559620febb856e58",
+      "reference": "../windows-number-mirror-20261123/case-2.pretty/Editor_Case_2.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-33.pretty/Editor_Case_33.kicad_mod",
+      "sha256": "503cbbf2799b43b2a7203044e9d5fc0810300c645dea3fbc3fcab8c7f09c67e0",
+      "reference": "../windows-number-mirror-20261123/case-33.pretty/Editor_Case_33.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-35.pretty/Editor_Case_35.kicad_mod",
+      "sha256": "db400131d36f7e68b0669e6f906417d8519f6d8aea708f5e1c186ef4f0b90fbe",
+      "reference": "../windows-number-mirror-20261123/case-35.pretty/Editor_Case_35.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-15.pretty/Editor_Case_15.kicad_mod",
+      "sha256": "64069a538d2cec5d9aa38bec77672a9f85ed8af6999613a0d36a8c925aa65d82",
+      "reference": "../windows-number-mirror-20261123/case-15.pretty/Editor_Case_15.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-19.pretty/Editor_Case_19.kicad_mod",
+      "sha256": "b9202f43b9fcc6febac151ed1b53dabef7362b1520703f9b9d32327ff18a499b",
+      "reference": "../windows-number-mirror-20261123/case-19.pretty/Editor_Case_19.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-5.pretty/Editor_Case_5.kicad_mod",
+      "sha256": "79cfcd3d8e3fad9ccc3d11480f25ed23839cae8fbddad18d97bcbbf0aa958caa",
+      "reference": "../windows-number-mirror-20261123/case-5.pretty/Editor_Case_5.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-16.pretty/Editor_Case_16.kicad_mod",
+      "sha256": "7f584ebf99f4e25cc96c1fd84f7e725780d39b14cfb575b7e3230de531411975",
+      "reference": "../windows-number-mirror-20261123/case-16.pretty/Editor_Case_16.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-18.pretty/Editor_Case_18.kicad_mod",
+      "sha256": "a7761a6b0b3ef763cc95babf3cda08029f32d2180ac70e3e948f1d8bc0b070ed",
+      "reference": "../windows-number-mirror-20261123/case-18.pretty/Editor_Case_18.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-7.pretty/Editor_Case_7.kicad_mod",
+      "sha256": "ea1dc2833229b1670264187cc064a56ff74c85c69b36fecaae9078fd152d3c29",
+      "reference": "../windows-number-mirror-20261123/case-7.pretty/Editor_Case_7.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-10.pretty/Editor_Case_10.kicad_mod",
+      "sha256": "735cb8d28ba6e3216ca8d32f28213664a1ddf1694da8af228ca43e1421dd54a9",
+      "reference": "../windows-number-mirror-20261123/case-10.pretty/Editor_Case_10.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-17.pretty/Editor_Case_17.kicad_mod",
+      "sha256": "2514ed2954c7dbb961560e1daf8e442493289c3552fa574ac94a7f827c290f5d",
+      "reference": "../windows-number-mirror-20261123/case-17.pretty/Editor_Case_17.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-11.pretty/Editor_Case_11.kicad_mod",
+      "sha256": "a39b8e84930d3f42f2c849bec45a29e60c75576d11e6c61d4a873295c55ab483",
+      "reference": "../windows-number-mirror-20261123/case-11.pretty/Editor_Case_11.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-14.pretty/Editor_Case_14.kicad_mod",
+      "sha256": "783eeba9c26feec1975f4b3378360c538694eb881a5133589af7f2eb547b9996",
+      "reference": "../windows-number-mirror-20261123/case-14.pretty/Editor_Case_14.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-3.pretty/Editor_Case_3.kicad_mod",
+      "sha256": "f3d2813d94741405c12024345fc953971d6f7c6318793995121961e1cc26a51f",
+      "reference": "../windows-number-mirror-20261123/case-3.pretty/Editor_Case_3.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-13.pretty/Editor_Case_13.kicad_mod",
+      "sha256": "7756140e6d39ba6df9e1c1cced745b2ca4e16040e9fddfcbaeb338c8cf37f0ec",
+      "reference": "../windows-number-mirror-20261123/case-13.pretty/Editor_Case_13.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-31.pretty/Editor_Case_31.kicad_mod",
+      "sha256": "3639bf24b9cfe3516588c4646b24838b92db1d87d4203f543b9bedad7cc31d3d",
+      "reference": "../windows-number-mirror-20261123/case-31.pretty/Editor_Case_31.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-21.pretty/Editor_Case_21.kicad_mod",
+      "sha256": "47757a6a78b95cd96eba3ad6ae019d1de5291bdf6a9607ce6abc6726186ecc1c",
+      "reference": "../windows-number-mirror-20261123/case-21.pretty/Editor_Case_21.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-26.pretty/Editor_Case_26.kicad_mod",
+      "sha256": "4bcf6cf4a8f8e4d89cae420b5082b8ef8178887f61fabbdcdf5a7d71f5623031",
+      "reference": "../windows-number-mirror-20261123/case-26.pretty/Editor_Case_26.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-12.pretty/Editor_Case_12.kicad_mod",
+      "sha256": "09bf2b877043b223561d27943469a9c77ed8472f1ba07c5b34183ce411ec44de",
+      "reference": "../windows-number-mirror-20261123/case-12.pretty/Editor_Case_12.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-32.pretty/Editor_Case_32.kicad_mod",
+      "sha256": "d4582c63bbbbda5461391d4184795b5d5d57e6f1bcf16ec8c7d01412cc0ec13b",
+      "reference": "../windows-number-mirror-20261123/case-32.pretty/Editor_Case_32.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-22.pretty/Editor_Case_22.kicad_mod",
+      "sha256": "a8e351ce67a5d533df65a6989328c0e07000d1febc347fbf2ad06672c126abac",
+      "reference": "../windows-number-mirror-20261123/case-22.pretty/Editor_Case_22.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-34.pretty/Editor_Case_34.kicad_mod",
+      "sha256": "b3ca218ab376c32b41afa250a42c782754eabdbf130545db754321ea6de35caf",
+      "reference": "../windows-number-mirror-20261123/case-34.pretty/Editor_Case_34.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-24.pretty/Editor_Case_24.kicad_mod",
+      "sha256": "3efff667e59c25bc832d9e7759dbe3814e81c13d6d05120bc6c829a109ed0267",
+      "reference": "../windows-number-mirror-20261123/case-24.pretty/Editor_Case_24.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-4.pretty/Editor_Case_4.kicad_mod",
+      "sha256": "694f8064e0fd37e464cb61c84e7ec9d64cc558bf8502cf411b9963804130782c",
+      "reference": "../windows-number-mirror-20261123/case-4.pretty/Editor_Case_4.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-28.pretty/Editor_Case_28.kicad_mod",
+      "sha256": "06300858da02a7bdbc1ce35755ae2a55bf37e3bd160b7f117c0e3537ed9b1ce2",
+      "reference": "../windows-number-mirror-20261123/case-28.pretty/Editor_Case_28.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-27.pretty/Editor_Case_27.kicad_mod",
+      "sha256": "095bcc62ec7ddb0d5e56b65a41cca489ccf05438860b0eaf40d0ae9ac2e16a68",
+      "reference": "../windows-number-mirror-20261123/case-27.pretty/Editor_Case_27.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-29.pretty/Editor_Case_29.kicad_mod",
+      "sha256": "0708d24e37034a210e741825c756ba8731e7b814f55dbc814b0a2aaf5c7273bb",
+      "reference": "../windows-number-mirror-20261123/case-29.pretty/Editor_Case_29.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-25.pretty/Editor_Case_25.kicad_mod",
+      "sha256": "897f50a9d39a2cc823c6831775f30f6326d338e246b2d17c735607e46554ee80",
+      "reference": "../windows-number-mirror-20261123/case-25.pretty/Editor_Case_25.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-9.pretty/Editor_Case_9.kicad_mod",
+      "sha256": "103c2be0b9e3d88ccfcad452880aaeb832aa52a2225c07ee64588eb26db5ce6c",
+      "reference": "../windows-number-mirror-20261123/case-9.pretty/Editor_Case_9.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-20.pretty/Editor_Case_20.kicad_mod",
+      "sha256": "5bd306fe0ff3ae61ad2d2f73085887998e88e68e040cc1acba7a3252d69e17d6",
+      "reference": "../windows-number-mirror-20261123/case-20.pretty/Editor_Case_20.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "case-23.pretty/Editor_Case_23.kicad_mod",
+      "sha256": "bbfe79d4d10b94592f8bcbca74be579aab14dcc02d26f3554e2119863ca64baf",
+      "reference": "../windows-number-mirror-20261123/case-23.pretty/Editor_Case_23.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "regression/JPEG-center.pretty/Stage1_SMD_Demo.kicad_mod",
+      "sha256": "bb9a748df252516aecfbba3830d4daaabcb227f09ca209cc5264f71e6a6cc519",
+      "reference": "../windows-number-mirror-20261123/regression/JPEG-center.pretty/Stage1_SMD_Demo.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "regression/PNG-center.pretty/Stage1_SMD_Demo.kicad_mod",
+      "sha256": "bb9a748df252516aecfbba3830d4daaabcb227f09ca209cc5264f71e6a6cc519",
+      "reference": "../windows-number-mirror-20261123/regression/PNG-center.pretty/Stage1_SMD_Demo.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "regression/PNG-arbitrary.pretty/Stage1_SMD_Demo.kicad_mod",
+      "sha256": "a9ba99f5d2c4e9bb3c2fc930ecd0820b75ac350a454337d708c0c3f102b19c28",
+      "reference": "../windows-number-mirror-20261123/regression/PNG-arbitrary.pretty/Stage1_SMD_Demo.kicad_mod",
+      "identical": true
+    },
+    {
+      "file": "regression/JPEG-arbitrary.pretty/Stage1_SMD_Demo.kicad_mod",
+      "sha256": "a9ba99f5d2c4e9bb3c2fc930ecd0820b75ac350a454337d708c0c3f102b19c28",
+      "reference": "../windows-number-mirror-20261123/regression/JPEG-arbitrary.pretty/Stage1_SMD_Demo.kicad_mod",
+      "identical": true
+    }
+  ],
+  "gui": {
+    "commit": "3611ebffaf1c5398a2dab6de1a9924fdd932b529",
+    "title": "KiCad Footprint Sketcher - NE555（白番号・中心十字を避ける表示）",
+    "image": "NE555-SOIC8-land-pattern.png  ·  740 × 500 px",
+    "mapped": true,
+    "canvas_size": [
+      1229,
+      629
+    ],
+    "scale": 1.0,
+    "number_font": {
+      "family": "Yu Gothic UI",
+      "size": 16,
+      "weight": "bold",
+      "slant": "roman",
+      "underline": 0,
+      "overstrike": 0
+    }
+  },
+  "archive_sha256": "7b321f406fb9db0c7326dcd900a01ef7b52233499e2177ca01f033904713664a",
+  "raw_windows_run": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T185234Z-d4e9fda8"
+}
