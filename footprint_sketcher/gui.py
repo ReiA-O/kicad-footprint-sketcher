@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, font, messagebox, ttk
 from typing import Literal
 
-from PIL import Image, ImageTk
+from PIL import Image
 
+from .canvas import SketchCanvas, pad_outline
+from .interaction import hit_pad, pad_corners, resize_pad
 from .model import PAD_LAYERS, Calibration, Pad, Point, Sketch, export_footprint
 
 
@@ -22,7 +25,7 @@ TEAL = "#08695e"
 BLUE = "#234f9a"
 ERROR = "#9b3324"
 
-Mode = Literal["idle", "calibration", "origin", "pad"]
+Mode = Literal["idle", "calibration", "origin", "pad", "draw"]
 
 
 def display_number(value: float) -> str:
@@ -39,147 +42,19 @@ def ensure_drawable(scale: float, pads: list[Pad]) -> None:
         raise ValueError("この縮尺ではパッドの位置・寸法を表示できません。校正の実距離を確認してください。")
 
 
-class SketchCanvas(tk.Canvas):
-    def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent, background=WORKSPACE, highlightthickness=0)
-        self.image: Image.Image | None = None
-        self.scale = 1.0
-        self.offset: Point = (0.0, 0.0)
-        self._photo: ImageTk.PhotoImage | None = None
-        self._photo_size: tuple[int, int] | None = None
-
-    def set_image(self, image: Image.Image) -> None:
-        self.image = image
-        self._photo_size = None
-
-    def image_to_canvas(self, point: Point) -> Point:
-        return (
-            self.offset[0] + point[0] * self.scale,
-            self.offset[1] + point[1] * self.scale,
-        )
-
-    def canvas_to_image(self, point: Point) -> Point:
-        return (
-            (point[0] - self.offset[0]) / self.scale,
-            (point[1] - self.offset[1]) / self.scale,
-        )
-
-    def render(self, sketch: Sketch, candidate_points: list[Point]) -> None:
-        self.delete("all")
-        width, height = self.winfo_width(), self.winfo_height()
-        image = self.image
-        if image is None:
-            self.create_text(
-                width / 2,
-                height / 2,
-                text="PNG または JPEG の下絵を開いてください",
-                fill=MUTED,
-                font="TkDefaultFont",
-            )
-            return
-
-        margin = 32
-        self.scale = min(
-            1.0,
-            max(1, width - 2 * margin) / image.width,
-            max(1, height - 2 * margin) / image.height,
-        )
-        self.offset = (
-            round((width - image.width * self.scale) / 2),
-            round((height - image.height * self.scale) / 2),
-        )
-        size = (
-            max(1, round(image.width * self.scale)),
-            max(1, round(image.height * self.scale)),
-        )
-        if size != self._photo_size:
-            resized = image.resize(size, Image.Resampling.LANCZOS)
-            self._photo = ImageTk.PhotoImage(resized, master=self)
-            self._photo_size = size
-        left, top = self.offset
-        self.create_rectangle(
-            left - 1, top - 1, left + size[0] + 1, top + size[1] + 1,
-            fill=SURFACE, outline=LINE,
-        )
-        self.create_image(left, top, image=self._photo, anchor="nw")
-
-        calibration = sketch.calibration
-        points = candidate_points
-        if not points and calibration is not None:
-            points = [calibration.a, calibration.b]
-        if sketch.origin is not None:
-            for pad in sketch.pads:
-                self._draw_pad(pad, sketch)
-            self._draw_origin(sketch.origin)
-        self._draw_calibration(points)
-
-    def _draw_calibration(self, points: list[Point]) -> None:
-        screen_points = [self.image_to_canvas(point) for point in points]
-        if len(screen_points) == 2:
-            self.create_line(*screen_points[0], *screen_points[1], fill=BLUE, dash=(5, 3))
-        for label, (x, y) in zip(("A", "B"), screen_points):
-            self.create_oval(x - 4, y - 4, x + 4, y + 4, fill=SURFACE, outline=BLUE, width=2)
-            self.create_text(x + 8, y - 8, text=label, fill=BLUE, anchor="sw")
-
-    def _draw_origin(self, point: Point) -> None:
-        x, y = self.image_to_canvas(point)
-        self.create_line(x - 6, y, x + 19, y, fill=BLUE, arrow="last", width=2)
-        self.create_line(x, y - 6, x, y + 19, fill=BLUE, arrow="last", width=2)
-        self.create_text(x + 22, y, text="X", fill=BLUE, anchor="w")
-        self.create_text(x, y + 22, text="Y", fill=BLUE, anchor="n")
-        self.create_text(x - 6, y - 6, text="0", fill=BLUE, anchor="se")
-
-    def _draw_pad(self, pad: Pad, sketch: Sketch) -> None:
-        calibration = sketch.calibration
-        assert calibration is not None
-        pixels_per_mm = self.scale / calibration.mm_per_pixel
-        cx, cy = self.image_to_canvas(sketch.mm_to_image((pad.x, pad.y)))
-        angle = math.radians(pad.angle % 360)
-        cos_angle, sin_angle = math.cos(angle), math.sin(angle)
-        vertices = [
-            (
-                cx + (x * cos_angle + y * sin_angle) * pixels_per_mm,
-                cy + (y * cos_angle - x * sin_angle) * pixels_per_mm,
-            )
-            for x, y in pad_outline(pad)
-        ]
-        # Keep drawing coordinates within the range used by the platform canvas.
-        clipped = [
-            (max(-30_000, min(x, 30_000)), max(-30_000, min(y, 30_000)))
-            for x, y in vertices
-        ]
-        self.create_polygon(clipped, fill=TEAL, outline=TEAL, width=2, stipple="gray50")
-        if 0 <= cx <= self.winfo_width() and 0 <= cy <= self.winfo_height():
-            self.create_text(cx, cy, text=pad.number, fill=INK)
-
-
-def pad_outline(pad: Pad) -> list[Point]:
-    left, right = -pad.width / 2, pad.width / 2
-    top, bottom = -pad.height / 2, pad.height / 2
-    radius = pad.radius
-    if radius == 0:
-        return [(left, top), (right, top), (right, bottom), (left, bottom)]
-
-    corners = (
-        (right - radius, top + radius, -90),
-        (right - radius, bottom - radius, 0),
-        (left + radius, bottom - radius, 90),
-        (left + radius, top + radius, 180),
-    )
-    outline = []
-    for x, y, start in corners:
-        for step in range(9):
-            angle = math.radians(start + step * 90 / 8)
-            outline.append((x + radius * math.cos(angle), y + radius * math.sin(angle)))
-    return outline
-
-
 class SketcherApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.sketch = Sketch()
         self.mode: Mode = "idle"
         self.calibration_points: list[Point] = []
+        self.selected_index: int | None = None
+        self._drag: dict | None = None
+        self._preview_pad: Pad | None = None
+        self._pan_start: Point | None = None
+        self._draw_shape = "rect"
+        self.tool = tk.StringVar(root, "select")
+        self.zoom_label = tk.StringVar(root, "100%")
 
         self.image_name = tk.StringVar(root, "下絵未選択")
         self.distance = tk.StringVar(root)
@@ -208,6 +83,7 @@ class SketcherApp:
         style.configure("TFrame", background=SURFACE)
         style.configure("Workspace.TFrame", background=WORKSPACE)
         style.configure("TLabel", background=SURFACE, foreground=INK)
+        style.configure("TRadiobutton", background=SURFACE, foreground=INK)
         style.configure("Title.TLabel", font=(default_family, 19, "bold"))
         style.configure("Section.TLabel", font=(default_family, 11, "bold"))
         style.configure("Hint.TLabel", foreground=MUTED)
@@ -240,14 +116,23 @@ class SketcherApp:
         work = ttk.Frame(shell, padding=10)
         work.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
         work.columnconfigure(0, weight=1)
-        work.rowconfigure(1, weight=1)
+        work.rowconfigure(2, weight=1)
         ttk.Label(work, textvariable=self.image_name, width=1).grid(
             row=0, column=0, sticky="ew", pady=(0, 8)
         )
+        self._build_tools(work)
         self.canvas = SketchCanvas(work)
-        self.canvas.grid(row=1, column=0, sticky="nsew")
+        self.canvas.grid(row=2, column=0, sticky="nsew")
         self.canvas.bind("<Configure>", lambda _event: self._redraw())
-        self.canvas.bind("<Button-1>", self._on_canvas_click)
+        self.canvas.bind("<Button-1>", self._on_canvas_press)
+        self.canvas.bind("<B1-Motion>", self._on_canvas_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._on_canvas_release)
+        self.canvas.bind("<MouseWheel>", self._on_wheel)
+        self.canvas.bind("<Button-4>", lambda event: self._zoom_at(1.2, (event.x, event.y)))
+        self.canvas.bind("<Button-5>", lambda event: self._zoom_at(1 / 1.2, (event.x, event.y)))
+        self.canvas.bind("<Button-2>", self._begin_pan)
+        self.canvas.bind("<B2-Motion>", self._pan)
+        self.canvas.bind("<ButtonRelease-2>", self._end_pan)
         self._build_pad_list(work)
 
         self._build_sidebar(shell)
@@ -257,6 +142,53 @@ class SketcherApp:
         self._status_label = ttk.Label(footer, textvariable=self.status)
         self._status_label.pack(fill="x")
         self.root.bind("<Escape>", self._cancel_action)
+
+    def _build_tools(self, parent: ttk.Frame) -> None:
+        tools = ttk.Frame(parent)
+        tools.grid(row=1, column=0, sticky="ew", pady=(0, 6))
+        ttk.Radiobutton(tools, text="選択/移動", variable=self.tool, value="select",
+                        command=self.select_tool).pack(side="left")
+        self._draw_buttons = []
+        for text, shape in (("矩形パッド", "rect"), ("角丸パッド", "roundrect")):
+            button = ttk.Radiobutton(tools, text=text, variable=self.tool, value=shape,
+                                     command=lambda value=shape: self.begin_draw(value))
+            button.pack(side="left", padx=(5, 0))
+            self._draw_buttons.append(button)
+        ttk.Button(tools, text="全体表示", command=self._fit_view).pack(side="right")
+        ttk.Button(tools, text="＋", width=3, command=lambda: self._zoom_at(1.2)).pack(side="right")
+        ttk.Label(tools, textvariable=self.zoom_label, width=6, anchor="center").pack(side="right")
+        ttk.Button(tools, text="−", width=3, command=lambda: self._zoom_at(1 / 1.2)).pack(side="right")
+
+    def _zoom_at(self, factor: float, anchor: Point | None = None) -> str:
+        if anchor is None:
+            anchor = (self.canvas.winfo_width() / 2, self.canvas.winfo_height() / 2)
+        self.canvas.zoom_at(factor, anchor)
+        self._redraw()
+        return "break"
+
+    def _on_wheel(self, event: tk.Event) -> str:
+        if event.delta:
+            self._zoom_at(1.2 ** max(-5, min(5, event.delta / 120)), (event.x, event.y))
+        return "break"
+
+    def _fit_view(self) -> None:
+        self.canvas.fit_to_window()
+        self._redraw()
+
+    def _begin_pan(self, event: tk.Event) -> str:
+        self._pan_start = (event.x, event.y)
+        return "break"
+
+    def _pan(self, event: tk.Event) -> str:
+        if self._pan_start is not None:
+            self.canvas.pan_by(event.x - self._pan_start[0], event.y - self._pan_start[1])
+            self._pan_start = (event.x, event.y)
+            self._redraw()
+        return "break"
+
+    def _end_pan(self, _event: tk.Event) -> str:
+        self._pan_start = None
+        return "break"
 
     def _build_sidebar(self, shell: ttk.Frame) -> None:
         sidebar = ttk.Frame(shell)
@@ -315,7 +247,7 @@ class SketcherApp:
 
     def _build_pad_list(self, parent: ttk.Frame) -> None:
         frame = ttk.Frame(parent)
-        frame.grid(row=2, column=0, sticky="ew", pady=(9, 0))
+        frame.grid(row=3, column=0, sticky="ew", pady=(9, 0))
         frame.columnconfigure(0, weight=1)
         columns = {
             "number": "番号",
@@ -344,6 +276,7 @@ class SketcherApp:
                 horizontal.grid_remove()
 
         self.pad_table.configure(xscrollcommand=sync_horizontal)
+        self.pad_table.bind("<<TreeviewSelect>>", self._on_table_select)
 
     def _build_controls(self, panel: ttk.Frame) -> None:
         ttk.Button(panel, text="下絵を開く…", command=self.open_image).grid(
@@ -377,6 +310,8 @@ class SketcherApp:
         self._number_entry = self._field(panel, "パッド番号", self.pad_number, 15, 0)
         self._placement_button = ttk.Button(panel, text="パッドを配置", command=self.begin_placement)
         self._placement_button.grid(row=16, column=1, sticky="ew", padx=(3, 0))
+        self._selection_button = ttk.Button(panel, text="選択パッドに適用", command=self.apply_selected)
+        self._selection_button.grid(row=17, column=0, columnspan=2, sticky="ew", pady=(7, 0))
 
     @staticmethod
     def _section(panel: ttk.Frame, title: str, row: int) -> None:
@@ -412,6 +347,8 @@ class SketcherApp:
             (self._center_button, calibration is not None),
             (self._placement_button, can_place),
             (self._export_button, bool(self.sketch.pads)),
+            (self._selection_button, self.selected_index is not None),
+            *[(button, can_place) for button in self._draw_buttons],
         ):
             widget.state(["!disabled"] if enabled else ["disabled"])
         self.calibration_label.set(
@@ -422,7 +359,9 @@ class SketcherApp:
         self._redraw()
 
     def _redraw(self) -> None:
-        self.canvas.render(self.sketch, self.calibration_points)
+        self.canvas.render(self.sketch, self.calibration_points,
+                           selected_index=self.selected_index, preview_pad=self._preview_pad)
+        self.zoom_label.set(f"{self.canvas.scale * 100:.0f}%")
 
     def _refresh_pad_list(self) -> None:
         rows = self.pad_table.get_children()
@@ -435,6 +374,8 @@ class SketcherApp:
             )
         if self.sketch.pads:
             self.pad_table.see(item)
+        if self.selected_index is not None and self.selected_index < len(self.sketch.pads):
+            self.pad_table.selection_set(self.pad_table.get_children()[self.selected_index])
 
     def open_image(self) -> None:
         path = filedialog.askopenfilename(
@@ -460,6 +401,10 @@ class SketcherApp:
             return
 
         self.sketch = Sketch()
+        self.selected_index = None
+        self._drag = None
+        self._preview_pad = None
+        self.tool.set("select")
         self.calibration_points.clear()
         self.mode = "idle"
         self.distance.set("")
@@ -472,6 +417,7 @@ class SketcherApp:
     def begin_calibration(self) -> None:
         self.calibration_points.clear()
         self.mode = "calibration"
+        self.tool.set("")
         self._message("寸法が分かっている区間の始点 A をクリックしてください。")
         self._refresh()
 
@@ -497,6 +443,7 @@ class SketcherApp:
 
     def begin_origin(self) -> None:
         self.mode = "origin"
+        self.tool.set("")
         self._message("原点にする位置をキャンバスでクリックしてください。")
         self._refresh()
 
@@ -523,6 +470,7 @@ class SketcherApp:
             self._message(str(error), error=True)
             return
         self.mode = "pad"
+        self.tool.set("")
         self._message("パッドの中心をキャンバスでクリックしてください。 Esc で配置を終了します。")
         self._refresh()
 
@@ -544,6 +492,178 @@ class SketcherApp:
         if not math.isfinite(number):
             raise ValueError(f"{label}に有限の数値を入力してください。")
         return number
+
+    def select_tool(self) -> None:
+        self.mode = "idle"
+        self.tool.set("select")
+        self._drag = None
+        self._preview_pad = None
+        self._message("パッドを選択してドラッグで移動、四隅のハンドルでサイズ変更できます。")
+        self._refresh()
+
+    def begin_draw(self, shape: str) -> None:
+        if self.sketch.calibration is None or self.sketch.origin is None:
+            return
+        self._drag = None
+        self._preview_pad = None
+        self.selected_index = None
+        selection = self.pad_table.selection()
+        if selection:
+            self.pad_table.selection_remove(selection)
+        self._draw_shape = shape
+        self.mode = "draw"
+        self.tool.set(shape)
+        used = {pad.number for pad in self.sketch.pads}
+        number = 1
+        while str(number) in used:
+            number += 1
+        self.pad_number.set(str(number))
+        self.pad_angle.set("0")
+        if shape == "rect":
+            self.pad_radius.set("0")
+        else:
+            try:
+                radius = self._read_number(self.pad_radius, "角のR")
+            except ValueError:
+                radius = 0
+            if radius <= 0:
+                self.pad_radius.set("0.1")
+        self._message(f"パッド {number} の対角をドラッグしてください。番号・角度・Rは右の欄で指定できます。")
+        self._refresh()
+
+    def _fill_pad_fields(self, pad: Pad) -> None:
+        for variable, value in ((self.pad_number, pad.number), (self.pad_width, pad.width),
+                                (self.pad_height, pad.height), (self.pad_angle, pad.angle),
+                                (self.pad_radius, pad.radius)):
+            variable.set(str(value))
+
+    def _on_table_select(self, _event: tk.Event) -> None:
+        selection = self.pad_table.selection()
+        if selection and self.mode == "idle" and self._drag is None:
+            children = self.pad_table.get_children()
+            if selection[0] in children:
+                self.selected_index = children.index(selection[0])
+                self._fill_pad_fields(self.sketch.pads[self.selected_index])
+                self._refresh()
+
+    def apply_selected(self) -> None:
+        if self.selected_index is None:
+            return
+        original = self.sketch.pads[self.selected_index]
+        try:
+            candidate = self._pad_at((original.x, original.y))
+            ensure_drawable(self.sketch.calibration.mm_per_pixel, [candidate])
+        except ValueError as error:
+            self._message(str(error), error=True)
+            return
+        self.sketch.pads[self.selected_index] = candidate
+        self._refresh_pad_list()
+        self._refresh()
+        self._message(f"パッド {candidate.number} の寸法・属性を更新しました。")
+
+    def _event_mm(self, event: tk.Event) -> Point:
+        return self.sketch.image_to_mm(self.canvas.canvas_to_image((event.x, event.y)))
+
+    def _on_canvas_press(self, event: tk.Event) -> None:
+        if self.mode in ("calibration", "origin", "pad"):
+            self._on_canvas_click(event)
+            return
+        if self.sketch.calibration is None or self.sketch.origin is None:
+            return
+        point = self._event_mm(event)
+        if self.mode == "draw":
+            self._drag = {"kind": "draw", "start": point, "screen_start": (event.x, event.y)}
+            return
+        if self.selected_index is not None:
+            pad = self.sketch.pads[self.selected_index]
+            for corner, position in enumerate(pad_corners(pad)):
+                screen = self.canvas.image_to_canvas(self.sketch.mm_to_image(position))
+                if math.dist(screen, (event.x, event.y)) <= 8:
+                    self._drag = {"kind": "resize", "start": point, "original": pad, "corner": corner,
+                                  "screen_start": (event.x, event.y)}
+                    return
+        self.selected_index = next((i for i in range(len(self.sketch.pads) - 1, -1, -1)
+                                    if hit_pad(self.sketch.pads[i], point)), None)
+        if self.selected_index is not None:
+            pad = self.sketch.pads[self.selected_index]
+            self._fill_pad_fields(pad)
+            self._drag = {"kind": "move", "start": point, "original": pad,
+                          "screen_start": (event.x, event.y)}
+            self._message(f"パッド {pad.number} を選択しました。ドラッグで移動、四隅でサイズ変更できます。")
+        else:
+            self._drag = None
+            selection = self.pad_table.selection()
+            if selection:
+                self.pad_table.selection_remove(selection)
+        self._refresh()
+
+    def _drag_candidate(self, point: Point) -> Pad:
+        drag = self._drag
+        assert drag is not None
+        if drag["kind"] == "move":
+            pad = drag["original"]
+            return replace(pad, x=pad.x + (point[0] - drag["start"][0]),
+                           y=pad.y + (point[1] - drag["start"][1]))
+        if drag["kind"] == "resize":
+            corner = pad_corners(drag["original"])[drag["corner"]]
+            target = (corner[0] + (point[0] - drag["start"][0]),
+                      corner[1] + (point[1] - drag["start"][1]))
+            return resize_pad(drag["original"], drag["corner"], target)
+        start = drag["start"]
+        angle = self._read_number(self.pad_angle, "角度")
+        radians = math.radians(angle % 360)
+        dx, dy = point[0] - start[0], point[1] - start[1]
+        width = abs(dx * math.cos(radians) - dy * math.sin(radians))
+        height = abs(dx * math.sin(radians) + dy * math.cos(radians))
+        radius = 0.0 if self._draw_shape == "rect" else self._read_number(self.pad_radius, "角のR")
+        if radius < 0 or (self._draw_shape == "roundrect" and radius == 0):
+            raise ValueError("角丸パッドのRには正の値を指定してください。")
+        return Pad(self.pad_number.get(), (start[0] + point[0]) / 2, (start[1] + point[1]) / 2,
+                   width, height, angle, min(radius, width / 2, height / 2))
+
+    def _on_canvas_drag(self, event: tk.Event) -> None:
+        if self._drag is None:
+            return
+        try:
+            candidate = self._drag_candidate(self._event_mm(event))
+            ensure_drawable(self.sketch.calibration.mm_per_pixel, [candidate])
+            self._preview_pad = candidate
+        except ValueError:
+            self._preview_pad = None
+        self._redraw()
+
+    def _on_canvas_release(self, event: tk.Event) -> None:
+        if self._drag is None:
+            return
+        drag = self._drag
+        try:
+            if drag["kind"] == "draw" and math.dist((event.x, event.y), drag["screen_start"]) < 3:
+                raise ValueError("対角にドラッグしてパッドの幅と高さを指定してください。")
+            if drag["kind"] != "draw" and (event.x, event.y) == drag["screen_start"]:
+                candidate = drag["original"]
+            else:
+                candidate = self._drag_candidate(self._event_mm(event))
+            ensure_drawable(self.sketch.calibration.mm_per_pixel, [candidate])
+        except ValueError as error:
+            self._message(str(error), error=True)
+        else:
+            if drag["kind"] == "draw":
+                self.sketch.add_pad(candidate)
+                self.selected_index = len(self.sketch.pads) - 1
+            else:
+                self.sketch.pads[self.selected_index] = candidate
+            self.mode = "idle"
+            self.tool.set("select")
+            self._fill_pad_fields(candidate)
+            if drag["kind"] != "draw" and candidate == drag["original"]:
+                self._message(f"パッド {candidate.number} を選択しました。四隅でサイズ変更できます。")
+            else:
+                self._message(f"パッド {candidate.number} を更新しました。寸法とRは右の欄で確認できます。")
+        finally:
+            self._drag = None
+            self._preview_pad = None
+            self._refresh_pad_list()
+            self._refresh()
 
     def _on_canvas_click(self, event: tk.Event) -> None:
         image = self.canvas.image
@@ -580,6 +700,7 @@ class SketcherApp:
             assert calibration is not None
             ensure_drawable(calibration.mm_per_pixel, [pad])
             self.sketch.add_pad(pad)
+            self.selected_index = None
         except ValueError as error:
             self._message(str(error), error=True)
             return
@@ -590,7 +711,10 @@ class SketcherApp:
         self._refresh()
 
     def _cancel_action(self, _event: tk.Event) -> None:
-        if self.mode != "idle" or self.calibration_points:
+        if self.mode != "idle" or self.calibration_points or self._drag:
+            self._drag = None
+            self._preview_pad = None
+            self.tool.set("select")
             self.mode = "idle"
             self.calibration_points.clear()
             self._message("操作を取り消しました。")
