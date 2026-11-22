@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import tkinter as tk
+from tkinter import font as tkfont
 
 from PIL import Image, ImageTk
 
@@ -36,6 +37,10 @@ class SketchCanvas(tk.Canvas):
         self._photo: ImageTk.PhotoImage | None = None
         self._photo_size: tuple[int, int] | None = None
         self._photo_key: tuple[object, ...] | None = None
+        self._number_font = tkfont.Font(
+            root=self, family=tkfont.nametofont("TkDefaultFont", root=self).actual("family"),
+            size=16, weight="bold",
+        )
 
     def set_image(self, image: Image.Image) -> None:
         self.image = image
@@ -324,7 +329,38 @@ class SketchCanvas(tk.Canvas):
             self.create_line(cx - 4, cy, cx + 4, cy, fill=BLUE, tags=("connection-point",))
             self.create_line(cx, cy - 4, cx, cy + 4, fill=BLUE, tags=("connection-point",))
         if 0 <= cx <= self.winfo_width() and 0 <= cy <= self.winfo_height():
-            self.create_text(cx, cy, text=pad.number, fill=INK)
+            label_x, label_y, anchor = self._number_label_position(cx, cy, pad.number)
+            for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                self.create_text(label_x + dx, label_y + dy, text=pad.number, fill=INK,
+                                 font=self._number_font, anchor=anchor, tags=("pad-number-outline",))
+            number_tag = "pad-number-preview" if preview else "pad-number"
+            if index is not None:
+                number_tag += f"-{index}"
+            self.create_text(label_x, label_y, text=pad.number, fill="#ffffff", font=self._number_font,
+                             anchor=anchor,
+                             tags=("pad-number", number_tag))
+
+    def _number_label_position(self, cx: float, cy: float, text: str) -> tuple[float, float, str]:
+        width, height = self.winfo_width(), self.winfo_height()
+        text_width = self._number_font.measure(text) + 2
+        text_height = self._number_font.metrics("linespace") + 2
+        gap = 10
+        candidates = []
+        for right, above, anchor in ((True, True, "sw"), (False, True, "se"),
+                                     (True, False, "nw"), (False, False, "ne")):
+            x, y = cx + (gap if right else -gap), cy + (-gap if above else gap)
+            left = x if right else x - text_width
+            top = y - text_height if above else y
+            bounds = (left, top, left + text_width, top + text_height)
+            candidates.append(((x, y, anchor), bounds))
+            if left >= 2 and top >= 2 and bounds[2] <= width - 2 and bounds[3] <= height - 2:
+                return x, y, anchor
+        # Long identifiers may not fit in any quadrant. Keep the cross clear
+        # and choose the quadrant with the most visible label area.
+        def visible_area(candidate):
+            left, top, right, bottom = candidate[1]
+            return max(0, min(width, right) - max(0, left)) * max(0, min(height, bottom) - max(0, top))
+        return max(candidates, key=visible_area)[0]
 
     def _draw_selection(
         self,

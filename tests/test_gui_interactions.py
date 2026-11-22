@@ -214,6 +214,239 @@ class GuiInteractionTests(unittest.TestCase):
         ]:
             self.assertEqual(float(variable.get()), getattr(pad, name))
 
+    def test_visible_number_editor_commits_only_number_cancels_and_keeps_next_draw_number_unused(self):
+        from dataclasses import replace
+
+        click_clock = int(time.monotonic() * 1000) & 0x7FFFFFFF
+
+        def commit_header(value, *, button=False):
+            self._entry(self.app.selected_number, value)
+            if button:
+                self._button("番号を変更")
+            else:
+                self.app._selected_number_entry.focus_set()
+                self.app._selected_number_entry.event_generate("<Return>", when="tail")
+                self._pump()
+
+        def begin_table_editor():
+            nonlocal click_clock
+            # Tk synthesizes Double-1 from ordinary clicks; it does not accept
+            # the Double modifier in event_generate. Separate consecutive pairs.
+            click_clock += 1000
+            item = self.app.pad_table.get_children()[0]
+            self.app.pad_table.see(item)
+            self._pump()
+            x, y, width, height = self.app.pad_table.bbox(item, "number")
+            for offset in (0, 100):
+                for pattern, release_offset in (("<Button-1>", 0), ("<ButtonRelease-1>", 1)):
+                    self.app.pad_table.event_generate(pattern, x=round(x + width / 2),
+                                                      y=round(y + height / 2),
+                                                      time=click_clock + offset + release_offset, when="tail")
+                    self._pump()
+            self.assertIsInstance(self.app._number_editor, ttk.Entry)
+            self.assertEqual(self.app._number_editor.get(), "1")
+
+        def enter_inline_number(value, key="<Return>"):
+            editor = self.app._number_editor
+            self.assertIsInstance(editor, ttk.Entry)
+            editor.delete(0, "end")
+            editor.insert(0, value)
+            editor.event_generate(key, when="tail")
+            self._pump()
+
+        self._calibrate()
+        self.app.center_snap.set(False)
+        original, _ = self._draw("角丸パッド", (-0.8, -0.6), (0.8, 0.6), radius="0.2", angle="30")
+        self.assertEqual(original.number, "1")
+        baseline = self._state()
+        history = tuple(self.app.history._snapshots)
+        self.assertEqual(self.app.mode, "draw")
+        self.assertTrue(self.app._selected_number_entry.winfo_viewable())
+        self.assertFalse(self.app._selected_number_entry.instate(["disabled"]))
+        self.assertEqual(self.app.selected_number.get(), "1")
+        commit_header("9")
+        self.assertEqual((self.app.mode, self.app.tool.get()), ("idle", "select"))
+        self.assertIsNone(self.app._number_editor)
+        self.assertEqual(self.app.sketch.pads, [replace(original, number="9")])
+        self.assertEqual(self.app.selected_number.get(), "9")
+        self.assertEqual(len(self.app.history._snapshots), len(history) + 1)
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+
+        self._click((original.x, original.y), world=True)
+        self.assertEqual(self.app.selected_number.get(), "1")
+        commit_header("9", button=True)
+        self.assertIsNone(self.app._number_editor)
+        renamed = self.app.sketch.pads[0]
+        self.assertEqual(renamed, replace(original, number="9"))
+        self._button("矩形パッド")
+        self.assertEqual(self.app.pad_number.get(), "1")
+        self._drag_world((3, 1), (4, 2))
+        self.assertEqual([pad.number for pad in self.app.sketch.pads], ["9", "1"])
+        self.assertEqual(self.app.sketch.pads[0], renamed)
+        self.assertEqual(self.app.selected_number.get(), "1")
+        self.assertEqual(self.app.pad_number.get(), "2")
+        self._button("1操作戻す")
+        self.assertEqual(self.app.sketch.pads, [renamed])
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self._button("選択/移動")
+        self._click((original.x, original.y), world=True)
+
+        self.assertEqual(self.app.selected_number.get(), "1")
+        commit_header("")
+        self.assertEqual(self.app.selected_number.get(), "")
+        self.assertIsNone(self.app._number_editor)
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self._button("番号を変更")
+        self.assertEqual(self.app.selected_number.get(), "")
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        commit_header("7", button=True)
+        self.assertEqual(self.app.sketch.pads, [replace(original, number="7")])
+        self.assertEqual(self.app.selected_number.get(), "7")
+        self.assertEqual(len(self.app.history._snapshots), len(history) + 1)
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self._click((original.x, original.y), world=True)
+        self.assertEqual(self.app.selected_number.get(), "1")
+
+        begin_table_editor()
+        enter_inline_number("")
+        self.assertIsInstance(self.app._number_editor, ttk.Entry)
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        enter_inline_number("discarded", "<Escape>")
+        self.assertIsNone(self.app._number_editor)
+        self.assertEqual(self.app.selected_number.get(), "1")
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+
+        begin_table_editor()
+        editor = self.app._number_editor
+        editor.delete(0, "end")
+        editor.insert(0, "focus-cancelled")
+        self.app.canvas.focus_set()
+        self._pump()
+        self.assertIsNone(self.app._number_editor)
+        self.assertEqual(self.app.selected_number.get(), "1")
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+
+        begin_table_editor()
+        enter_inline_number("12")
+        self.assertIsNone(self.app._number_editor)
+        self.assertEqual(self.app.selected_number.get(), "12")
+        self.assertEqual(self.app.sketch.pads, [replace(original, number="12")])
+        self.assertEqual(len(self.app.history._snapshots), len(history) + 1)
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+
+    def test_axis_mirror_copy_uses_origin_preserves_custom_copper_paste_and_undoes_as_one_operation(self):
+        from footprint_sketcher.compound import CustomPad, world_outline, world_paste_shapes
+
+        def select_rows(indices):
+            children = self.app.pad_table.get_children()
+            self.app.pad_table.selection_set([children[index] for index in indices])
+            self.app.pad_table.focus(children[indices[-1]])
+            self.app.pad_table.event_generate("<<TreeviewSelect>>", when="tail")
+            self._pump()
+            self.assertEqual(self.app.selected_indices, set(indices))
+
+        def reflected(point, axis):
+            return (point[0], -point[1]) if axis == "x" else (-point[0], point[1])
+
+        def reflected_angle(angle, axis):
+            return (-angle if axis == "x" else 180 - angle) % 360
+
+        self._calibrate()
+        self.app.center_snap.set(False)
+        self._button("原点を選ぶ")
+        origin = self._click((390, 250))
+        self.assertEqual(self.app.sketch.origin, origin)
+        self.assertNotEqual(origin, (450, 280))
+        for variable, value in ((self.app.pad_width, "4"), (self.app.pad_height, "1"),
+                                (self.app.pad_angle, "0"), (self.app.pad_radius, "0")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        self._click((0, 0), world=True)
+        self._entry(self.app.pad_width, "1")
+        self._entry(self.app.pad_height, "3")
+        self._click((-1.5, 1), world=True)
+        self._button("選択/移動")
+        select_rows([0, 1])
+        self._entry(self.app.merge_number, "L")
+        self._button("選択図形を合体")
+        custom = self.app.sketch.pads[0]
+        corner = max(range(len(custom.corners)),
+                     key=lambda index: (custom.corners[index][0], -custom.corners[index][1]))
+        self._entry(self.app.fillet_radius, "0.2")
+        self._button("角を選んでフィレット")
+        screen = self.app._corner_screens(custom)[corner]
+        self._event("<Button-1>", screen)
+        self._event("<ButtonRelease-1>", screen)
+        self._escape()
+        self._entry(self.app.pad_angle, "30")
+        self._button("選択パッドに適用")
+        self._button("数値サイズで配置")
+        for variable, value in ((self.app.pad_width, "1.8"), (self.app.pad_height, "0.8"),
+                                (self.app.pad_angle, "35"), (self.app.pad_radius, "0.2")):
+            self._entry(variable, value)
+        self._click((3, 2), world=True)
+        self._button("選択/移動")
+        originals = tuple(self.app.sketch.pads)
+        self.assertIsInstance(originals[0], CustomPad)
+        self.assertTrue(originals[0].curve_edges)
+        self.assertEqual(originals[0].angle, 30)
+        self.assertEqual((originals[1].angle, originals[1].radius), (35, 0.2))
+        baseline, payload = self._state(), self._export_bytes()
+        history = tuple(self.app.history._snapshots)
+
+        for axis, text in (("x", "X軸で反転コピー"), ("y", "Y軸で反転コピー")):
+            with self.subTest(axis=axis):
+                select_rows([0, 1])
+                self._button(text)
+                self.assertEqual(tuple(self.app.sketch.pads[:2]), originals)
+                self.assertEqual(len(self.app.sketch.pads), 4)
+                self.assertEqual(self.app.selected_indices, {2, 3})
+                copies = self.app.sketch.pads[2:]
+                self.assertEqual(len({pad.number for pad in copies}), 2)
+                self.assertFalse({pad.number for pad in copies} & {pad.number for pad in originals})
+                for source, copied in zip(originals, copies):
+                    self.assertIsInstance(copied, type(source))
+                    self._assert_point((copied.x, copied.y), reflected((source.x, source.y), axis))
+                    self.assertAlmostEqual(copied.angle % 360, reflected_angle(source.angle, axis))
+                    self.assertEqual((copied.width, copied.height, copied.radius),
+                                     (source.width, source.height, source.radius))
+                    expected_outline = [reflected(point, axis) for point in world_outline(source)]
+                    actual_outline = world_outline(copied)
+                    self.assertEqual(len(actual_outline), len(expected_outline))
+                    for expected in expected_outline:
+                        self._assert_point(min(actual_outline, key=lambda point: math.dist(point, expected)), expected)
+                    before_apertures = world_paste_shapes(source)
+                    after_apertures = world_paste_shapes(copied)
+                    self.assertEqual(len(after_apertures), len(before_apertures))
+                    for before, after in zip(before_apertures, after_apertures):
+                        self._assert_point((after.x, after.y), reflected((before.x, before.y), axis))
+                        self.assertEqual((after.width, after.height, after.radius),
+                                         (before.width, before.height, before.radius))
+                        self.assertAlmostEqual(after.angle % 360, reflected_angle(before.angle, axis))
+                self.assertEqual(self.app.sketch.origin, origin)
+                self.assertEqual(len(self.app.history._snapshots), len(history) + 1)
+                mirrored_payload = self._export_bytes()
+                for layers in (b'(layers "F.Cu" "F.Mask")', b'(layers "F.Paste")',
+                               b'(layers "F.Cu" "F.Paste" "F.Mask")'):
+                    self.assertEqual(mirrored_payload.count(layers), payload.count(layers) * 2)
+                self._button("1操作戻す")
+                self.assertEqual(self._state(), baseline)
+                self.assertEqual(tuple(self.app.history._snapshots), history)
+                self.assertEqual(self._export_bytes(), payload)
+
     def test_merge_fillet_attributes_move_copy_paste_and_each_undo_preserve_paste_openings(self):
         from footprint_sketcher.compound import CustomPad, world_outline, world_paste_shapes
 

@@ -13,7 +13,7 @@ from PIL import Image
 
 from .canvas import SketchCanvas, pad_outline
 from .interaction import hit_pad, pad_corners, resize_pad
-from .editing import Snapshot, UndoHistory, align_centers, distribute_centers, duplicate_pads
+from .editing import Snapshot, UndoHistory, align_centers, distribute_centers, duplicate_pads, mirrored_copies
 from .compound import CustomPad, merge_pads, fillet_pad
 from .model import PAD_LAYERS, AxisCalibration, Calibration, Pad, Point, Sketch, export_footprint
 
@@ -65,12 +65,14 @@ class SketcherApp:
         self._preview_pads: dict[int, Pad] = {}
         self._paste_previews: list[Pad] = []
         self._snap_guides: list[tuple[str, float]] = []
+        self._number_editor: ttk.Entry | None = None
         self._pan_start: Point | None = None
         self._draw_shape = "rect"
         self.tool = tk.StringVar(root, "select")
         self.zoom_label = tk.StringVar(root, "100%")
         self.center_snap = tk.BooleanVar(root, True)
         self.selection_label = tk.StringVar(root, "選択 0個")
+        self.selected_number = tk.StringVar(root)
         self.merge_number = tk.StringVar(root)
         self.fillet_radius = tk.StringVar(root, "0.25")
 
@@ -161,6 +163,12 @@ class SketcherApp:
         self._copy_button.pack(side="left", padx=4)
         self._paste_button = ttk.Button(header, text="貼り付け", command=self.begin_paste)
         self._paste_button.pack(side="left", padx=4)
+        ttk.Label(header, text="選択番号").pack(side="left", padx=(10, 3))
+        self._selected_number_entry = ttk.Entry(header, textvariable=self.selected_number, width=7)
+        self._selected_number_entry.pack(side="left")
+        self._selected_number_entry.bind("<Return>", self.rename_selected)
+        self._renumber_button = ttk.Button(header, text="番号を変更", command=self.rename_selected)
+        self._renumber_button.pack(side="left", padx=4)
         ttk.Label(header, text="KiCad 10.0", style="Hint.TLabel").pack(side="right")
 
         work = ttk.Frame(shell, padding=10)
@@ -338,6 +346,18 @@ class SketcherApp:
         self.pad_table.configure(xscrollcommand=sync_horizontal)
         self.pad_table.bind("<<TreeviewSelect>>", self._on_table_select)
         self.pad_table.bind("<Button-1>", self._on_table_press)
+        self.pad_table.bind("<Double-Button-1>", self._on_table_double_click)
+
+    def _build_mirror_tools(self, parent: ttk.Frame) -> None:
+        bar = ttk.Frame(parent)
+        bar.grid(row=30, column=0, columnspan=2, sticky="ew", pady=(5, 0))
+        bar.columnconfigure((0, 1), weight=1)
+        self._mirror_buttons = []
+        for column, (axis, text) in enumerate((("x", "X軸で反転コピー"), ("y", "Y軸で反転コピー"))):
+            button = ttk.Button(bar, text=text, command=lambda value=axis: self.mirror_selected(value))
+            button.grid(row=0, column=column, sticky="ew", padx=(0, 3) if column == 0 else (3, 0))
+            self._mirror_buttons.append(button)
+        ttk.Label(bar, text="原点を通る軸・同じレイヤー", style="Hint.TLabel").grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
 
     def _build_alignment_tools(self, parent: ttk.Frame) -> None:
         bar = ttk.Frame(parent)
@@ -410,6 +430,8 @@ class SketcherApp:
         self._fillet_button.grid(row=25, column=1, sticky="ew", padx=(3, 0))
         ttk.Label(panel, text="銅箔・Maskは合体、Pasteは元の開口を保持。\n金色の点線はPaste、十字は接続点です。\n合体後の寸法変更はUndoで合体前に戻します。",
                   style="Hint.TLabel").grid(row=26, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        self._section(panel, "反転コピー", 28)
+        self._build_mirror_tools(panel)
 
     @staticmethod
     def _section(panel: ttk.Frame, title: str, row: int) -> None:
@@ -442,6 +464,8 @@ class SketcherApp:
         for widget, enabled in (
             (self._undo_button, self.history.can_undo or bool(self.calibration_points) or self._drag is not None),
             (self._copy_button, bool(self.selected_indices)),
+            (self._renumber_button, len(self.selected_indices) == 1),
+            (self._selected_number_entry, len(self.selected_indices) == 1),
             (self._paste_button, can_place and bool(self.clipboard)),
             (self._calibration_button, self.canvas.image is not None),
             (self._apply_button, len(self.calibration_points) == (4 if self._axis_method() else 2)),
@@ -459,12 +483,15 @@ class SketcherApp:
             *[(button, can_place) for button in self._draw_buttons],
             *[(button, self.mode == "idle" and len(self.selected_indices) >= minimum)
               for button, minimum in self._align_buttons],
+            *[(button, self.mode == "idle" and bool(self.selected_indices)) for button in self._mirror_buttons],
         ):
             widget.state(["!disabled"] if enabled else ["disabled"])
         self._number_entry.state(["disabled"] if len(self.selected_indices) > 1 else ["!disabled"])
         for entry in (self._width_entry, self._height_entry, self._radius_entry):
             entry.state(["disabled"] if has_custom and self.mode in ("idle", "fillet") else ["!disabled"])
         self.selection_label.set(f"選択 {len(self.selected_indices)}個")
+        self.selected_number.set(self.sketch.pads[self.selected_index].number
+                                 if len(self.selected_indices) == 1 else "")
         self._calibration_button.configure(text="横2点＋縦2点を選ぶ" if self._axis_method() else "校正の2点を選ぶ")
         if calibration is None:
             self.calibration_label.set("未校正")
@@ -499,6 +526,7 @@ class SketcherApp:
         self.zoom_label.set(f"{self.canvas.scale * 100:.0f}%")
 
     def _refresh_pad_list(self) -> None:
+        self._close_number_editor()
         rows = self.pad_table.get_children()
         if rows:
             self.pad_table.delete(*rows)
@@ -514,6 +542,7 @@ class SketcherApp:
             self.pad_table.selection_set([children[index] for index in sorted(self.selected_indices)])
             if self.selected_index is not None:
                 self.pad_table.focus(children[self.selected_index])
+                self.pad_table.see(children[self.selected_index])
 
     def open_image(self) -> None:
         path = filedialog.askopenfilename(
@@ -757,6 +786,116 @@ class SketcherApp:
     def _on_table_press(self, _event: tk.Event) -> None:
         if self.mode != "idle":
             self.select_tool()
+
+    def _on_table_double_click(self, event: tk.Event) -> str | None:
+        item = self.pad_table.identify_row(event.y)
+        if not item or self.pad_table.identify_column(event.x) != "#1":
+            return None
+        index = self.pad_table.get_children().index(item)
+        self._set_selection([index], index)
+        self.pad_table.selection_set(item)
+        self.pad_table.focus(item)
+        self.begin_renumber()
+        return "break"
+
+    def _close_number_editor(self) -> None:
+        editor, self._number_editor = self._number_editor, None
+        if editor is not None:
+            editor.destroy()
+
+    def rename_selected(self, _event: tk.Event | None = None) -> str:
+        if len(self.selected_indices) != 1 or self.selected_index is None:
+            return "break"
+        index = self.selected_index
+        original = self.sketch.pads[index]
+        try:
+            candidate = replace(original, number=self.selected_number.get())
+        except ValueError as error:
+            self._message(str(error), error=True)
+            return "break"
+        before = Snapshot.capture(self.sketch)
+        self.select_tool()
+        self.sketch.pads[index] = candidate
+        self._record_change(before)
+        self._fill_pad_fields(candidate)
+        self._refresh_pad_list()
+        self._refresh()
+        self.canvas.focus_set()
+        self._message(f"パッド番号を {candidate.number} に変更しました。")
+        return "break"
+
+    def begin_renumber(self) -> None:
+        if len(self.selected_indices) != 1 or self.selected_index is None:
+            return
+        self._close_number_editor()
+        self.select_tool()
+        index = self.selected_index
+        original = self.sketch.pads[index]
+        item = self.pad_table.get_children()[index]
+        self.pad_table.see(item)
+        self.root.update_idletasks()
+        bounds = self.pad_table.bbox(item, "number")
+        if not bounds:
+            return
+        x, y, width, height = bounds
+        editor = ttk.Entry(self.pad_table)
+        editor.insert(0, original.number)
+        editor.place(x=x, y=y, width=width, height=height)
+        self._number_editor = editor
+
+        def commit(_event: tk.Event) -> str:
+            if index >= len(self.sketch.pads) or self.sketch.pads[index] != original:
+                self._close_number_editor()
+                return "break"
+            try:
+                candidate = replace(original, number=editor.get())
+            except ValueError as error:
+                self._message(str(error), error=True)
+                return "break"
+            before = Snapshot.capture(self.sketch)
+            self.sketch.pads[index] = candidate
+            self._close_number_editor()
+            self._record_change(before)
+            self._fill_pad_fields(candidate)
+            self._refresh_pad_list()
+            self._refresh()
+            self.canvas.focus_set()
+            self._message(f"パッド番号を {candidate.number} に変更しました。")
+            return "break"
+
+        def cancel(_event: tk.Event) -> str:
+            self._close_number_editor()
+            self.canvas.focus_set()
+            self._message("番号の変更を取り消しました。")
+            return "break"
+
+        editor.bind("<Return>", commit)
+        editor.bind("<Escape>", cancel)
+        editor.bind("<FocusOut>", lambda _event: self._close_number_editor())
+        editor.focus_set()
+        editor.selection_range(0, "end")
+        self._message("番号を入力してEnterで確定、Escまたは別の場所をクリックすると取消します。")
+
+    def mirror_selected(self, axis: str) -> None:
+        if self.mode != "idle" or not self.selected_indices:
+            return
+        before = Snapshot.capture(self.sketch)
+        try:
+            copies = mirrored_copies([self.sketch.pads[index] for index in sorted(self.selected_indices)],
+                                     self.sketch.pads, axis)
+            ensure_drawable(minimum_scale(self.sketch.calibration), copies)
+        except ValueError as error:
+            self._message(str(error), error=True)
+            return
+        first = len(self.sketch.pads)
+        self.sketch.pads.extend(copies)
+        self._set_selection(range(first, len(self.sketch.pads)))
+        self._record_change(before)
+        if self.selected_index is not None:
+            self._fill_pad_fields(self.sketch.pads[self.selected_index])
+        self._refresh_pad_list()
+        self._refresh()
+        self._message(f"原点を通る{axis.upper()}軸で反転コピーしました。元のパッドとレイヤーを保持し、新番号を付けています。")
 
     def _clear_preview(self) -> None:
         self._drag = None
@@ -1067,7 +1206,10 @@ class SketcherApp:
         if locked is not None:
             self._snap_guides.append(locked)
         dx, dy = center[0] - original.x, center[1] - original.y
-        return {index: replace(pad, x=pad.x + dx, y=pad.y + dy) for index, pad in drag["originals"].items()}
+        return {index: replace(pad,
+                               x=center[0] if index == self.selected_index else pad.x + dx,
+                               y=center[1] if index == self.selected_index else pad.y + dy)
+                for index, pad in drag["originals"].items()}
 
     def _on_canvas_motion(self, event: tk.Event) -> None:
         if self.mode not in ("pad", "paste") or self._drag is not None:
