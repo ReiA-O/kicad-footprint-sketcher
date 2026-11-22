@@ -94,6 +94,8 @@ class SketcherApp:
         root.minsize(880, 680)
         self._configure_style()
         self._build_layout()
+        from .workspace import EditorTools
+        self.tools = EditorTools(self)
         self._refresh()
 
     @property
@@ -116,9 +118,24 @@ class SketcherApp:
         self._selected_index = (primary if primary in self.selected_indices else
                                 max(self.selected_indices) if self.selected_indices else None)
 
-    def _record_change(self, before: Snapshot) -> None:
+    def _record_change(self, before: Snapshot) -> bool:
+        try:
+            if (self.calibration_points and self.sketch.calibration == before.calibration
+                    and Snapshot.capture(self.sketch) != before):
+                raise ValueError("校正を適用するか、選択/移動で未適用の校正点を終了してから編集してください。")
+            if hasattr(self, "tools"):
+                self.tools.constrain(before)
+        except ValueError as error:
+            before.restore(self.sketch)
+            self._set_selection(self.selected_indices)
+            self._clear_preview()
+            self._refresh_pad_list()
+            self._refresh()
+            self._message(str(error), error=True)
+            return False
         if Snapshot.capture(self.sketch) != before:
             self.history.checkpoint(before)
+        return True
 
     def _configure_style(self) -> None:
         style = ttk.Style(self.root)
@@ -462,9 +479,16 @@ class SketcherApp:
         self.status.set(text)
         self._status_label.configure(style="Error.TLabel" if error else "Status.TLabel")
 
+    def _pending_calibration_blocks_edit(self) -> bool:
+        if not self.calibration_points:
+            return False
+        self._message("校正の実距離を入力して適用するか、選択/移動で校正点の選択を終了してください。")
+        return True
+
     def _refresh(self) -> None:
         calibration = self.sketch.calibration
         can_place = calibration is not None and self.sketch.origin is not None
+        can_edit_selection = self.mode == "idle" and not self.calibration_points
         has_custom = any(isinstance(self.sketch.pads[index], CustomPad) for index in self.selected_indices)
         for widget, enabled in (
             (self._undo_button, self.history.can_undo or bool(self.calibration_points) or self._drag is not None),
@@ -481,19 +505,29 @@ class SketcherApp:
             (self._numeric_tool, can_place),
             (self._export_button, bool(self.sketch.pads)),
             (self._selection_button,
-             self.mode == "idle" and self._drag is None and self.selected_index is not None
+             can_edit_selection and self._drag is None and self.selected_index is not None
              and not (has_custom and len(self.selected_indices) > 1)),
-            (self._merge_button, self.mode == "idle" and len(self.selected_indices) >= 2),
-            (self._fillet_button, self.mode == "idle" and len(self.selected_indices) == 1 and has_custom),
+            (self._merge_button, can_edit_selection and len(self.selected_indices) >= 2),
+            (self._fillet_button, can_edit_selection and len(self.selected_indices) == 1 and has_custom),
             *[(button, can_place) for button in self._draw_buttons],
-            *[(button, self.mode == "idle" and len(self.selected_indices) >= minimum)
+            *[(button, can_edit_selection and len(self.selected_indices) >= minimum)
               for button, minimum in self._align_buttons],
-            *[(button, self.mode == "idle" and bool(self.selected_indices)) for button in self._mirror_buttons],
+            *[(button, can_edit_selection and bool(self.selected_indices)) for button in self._mirror_buttons],
         ):
             widget.state(["!disabled"] if enabled else ["disabled"])
         self._number_entry.state(["disabled"] if len(self.selected_indices) > 1 else ["!disabled"])
+        if len(self.selected_indices) == 1 and self.sketch.pads[self.selected_index].pad_type == "np_thru_hole":
+            for widget in (self._number_entry, self._selected_number_entry, self._renumber_button):
+                widget.state(["disabled"])
         for entry in (self._width_entry, self._height_entry, self._radius_entry):
             entry.state(["disabled"] if has_custom and self.mode in ("idle", "fillet") else ["!disabled"])
+        if self.mode == "idle" and len(self.selected_indices) == 1:
+            pad = self.sketch.pads[self.selected_index]
+            kind = getattr(pad, "graphic_kind", pad.pad_shape)
+            if kind in ("rect", "circle", "oval", "line", "arc", "polygon"):
+                self._radius_entry.state(["disabled"])
+            if kind == "line":
+                self._height_entry.state(["disabled"])
         self.selection_label.set(f"選択 {len(self.selected_indices)}個")
         self.selected_number.set(self.sketch.pads[self.selected_index].number
                                  if len(self.selected_indices) == 1 else "")
@@ -506,6 +540,8 @@ class SketcherApp:
         else:
             self.calibration_label.set(f"{display_number(calibration.mm_per_pixel)} mm/px  ・  {display_number(calibration.distance)} mm")
         self.canvas.configure(cursor="crosshair" if self.mode != "idle" else "arrow")
+        if hasattr(self, "tools"):
+            self.tools.refresh()
         self._redraw()
 
     def _redraw(self) -> None:
@@ -635,7 +671,8 @@ class SketcherApp:
             self._message(str(error), error=True)
             return
 
-        self._record_change(before)
+        if self._record_change(before) is False:
+            return
 
         self.calibration_points.clear()
         self.mode = "idle"
@@ -671,7 +708,8 @@ class SketcherApp:
         self.calibration_points.clear()
         self.mode = "idle"
         self.tool.set("select")
-        self._record_change(before)
+        if self._record_change(before) is False:
+            return
         if self.selected_index is not None:
             self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self._message("原点を設定しました。パッドの寸法を入力し、配置を始めてください。")
@@ -748,6 +786,7 @@ class SketcherApp:
             height=self._read_number(self.pad_height, "高さ"),
             angle=self._read_number(self.pad_angle, "角度"),
             radius=self._read_number(self.pad_radius, "角のR"),
+            **(self.tools.pad_options() if hasattr(self, "tools") else {}),
         )
 
     @staticmethod
@@ -813,6 +852,8 @@ class SketcherApp:
                                 (self.pad_height, pad.height), (self.pad_angle, pad.angle),
                                 (self.pad_radius, pad.radius)):
             variable.set(str(value))
+        if hasattr(self, "tools"):
+            self.tools.on_selection(pad)
 
     def _on_table_select(self, _event: tk.Event) -> None:
         selection = self.pad_table.selection()
@@ -860,7 +901,8 @@ class SketcherApp:
         before = Snapshot.capture(self.sketch)
         self.select_tool()
         self.sketch.pads[index] = candidate
-        self._record_change(before)
+        if self._record_change(before) is False:
+            return
         self._fill_pad_fields(candidate)
         self._refresh_pad_list()
         self._refresh()
@@ -899,7 +941,8 @@ class SketcherApp:
             before = Snapshot.capture(self.sketch)
             self.sketch.pads[index] = candidate
             self._close_number_editor()
-            self._record_change(before)
+            if self._record_change(before) is False:
+                return
             self._fill_pad_fields(candidate)
             self._refresh_pad_list()
             self._refresh()
@@ -921,6 +964,8 @@ class SketcherApp:
         self._message("番号を入力してEnterで確定、Escまたは別の場所をクリックすると取消します。")
 
     def mirror_selected(self, axis: str) -> None:
+        if self._pending_calibration_blocks_edit():
+            return
         if self.mode != "idle" or not self.selected_indices:
             return
         before = Snapshot.capture(self.sketch)
@@ -934,7 +979,8 @@ class SketcherApp:
         first = len(self.sketch.pads)
         self.sketch.pads.extend(copies)
         self._set_selection(range(first, len(self.sketch.pads)))
-        self._record_change(before)
+        if self._record_change(before) is False:
+            return
         if self.selected_index is not None:
             self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self._refresh_pad_list()
@@ -1020,7 +1066,8 @@ class SketcherApp:
         first = len(self.sketch.pads)
         self.sketch.pads.extend(pasted)
         self._set_selection(range(first, len(self.sketch.pads)))
-        self._record_change(before)
+        if self._record_change(before) is False:
+            return
         self._paste_previews.clear()
         self._snap_guides.clear()
         self._refresh_pad_list()
@@ -1028,6 +1075,8 @@ class SketcherApp:
         self._message(f"{len(pasted)}個を新しい番号で貼り付けました。続けて配置でき、Escで終了します。")
 
     def align_selected(self, axis: str, spacing: bool = False) -> None:
+        if self._pending_calibration_blocks_edit():
+            return
         if self.mode != "idle":
             return
         before = Snapshot.capture(self.sketch)
@@ -1039,7 +1088,8 @@ class SketcherApp:
             self._message(str(error), error=True)
             return
         self.sketch.pads[:] = pads
-        self._record_change(before)
+        if self._record_change(before) is False:
+            return
         if self.selected_index is not None:
             self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self._refresh_pad_list()
@@ -1047,10 +1097,15 @@ class SketcherApp:
         self._message("両端を固定して中心を等間隔に配置しました。" if spacing else "選択したパッドの平均中心線に揃えました。")
 
     def merge_selected(self) -> None:
+        if self._pending_calibration_blocks_edit():
+            return
         if self.mode != "idle" or len(self.selected_indices) < 2:
             return
         before = Snapshot.capture(self.sketch)
         indices = sorted(self.selected_indices)
+        if any(self.selected_indices.intersection(c.targets) for c in self.sketch.constraints):
+            self._message("合体する図形を参照する拘束を先に解除してください。", error=True)
+            return
         try:
             merged = merge_pads([self.sketch.pads[index] for index in indices], self.merge_number.get())
             ensure_drawable(minimum_scale(self.sketch.calibration), [merged])
@@ -1059,15 +1114,22 @@ class SketcherApp:
             return
         remaining = [pad for index, pad in enumerate(self.sketch.pads) if index not in self.selected_indices]
         remaining.insert(indices[0], merged)
+        slots = [i for i in range(len(self.sketch.pads)) if i not in self.selected_indices]
+        slots.insert(indices[0], None)
+        mapping = {old: new for new, old in enumerate(slots) if old is not None}
+        self.sketch.constraints[:] = [replace(c, targets=tuple(mapping[i] for i in c.targets)) for c in self.sketch.constraints]
         self.sketch.pads[:] = remaining
         self.selected_index = indices[0]
-        self._record_change(before)
+        if self._record_change(before) is False:
+            return
         self._fill_pad_fields(merged)
         self._refresh_pad_list()
         self._refresh()
         self._message(f"端子番号 {merged.number} の1個のパッドに合体しました。Pasteは元の各開口を保持しています。")
 
     def begin_fillet(self) -> None:
+        if self._pending_calibration_blocks_edit():
+            return
         if len(self.selected_indices) != 1 or self.selected_index is None:
             return
         if not isinstance(self.sketch.pads[self.selected_index], CustomPad):
@@ -1109,13 +1171,16 @@ class SketcherApp:
             self._message(str(error), error=True)
             return
         self.sketch.pads[self.selected_index] = candidate
-        self._record_change(before)
+        if self._record_change(before) is False:
+            return
         self._fill_pad_fields(candidate)
         self._refresh_pad_list()
         self._refresh()
         self._message(f"選んだ角にR {radius:g} mmを適用しました。Paste開口は保持し、続けて別の角を選べます。")
 
     def apply_selected(self) -> None:
+        if self._pending_calibration_blocks_edit():
+            return
         if self.mode != "idle" or self._drag is not None or self.selected_index is None:
             return
         original = self.sketch.pads[self.selected_index]
@@ -1123,7 +1188,15 @@ class SketcherApp:
         try:
             if len(self.selected_indices) > 1 and any(isinstance(self.sketch.pads[index], CustomPad) for index in self.selected_indices):
                 raise ValueError("合体形状を含む一括寸法変更には対応していません。合体前にUndoして元の図形を編集してください。")
-            candidate = self._pad_at((original.x, original.y))
+            width = self._read_number(self.pad_width, "幅")
+            height = self._read_number(self.pad_height, "高さ")
+            if getattr(original, "graphic_kind", original.pad_shape) == "circle" and len(self.selected_indices) == 1:
+                if width != original.width and height == original.height: height = width
+                elif height != original.height and width == original.width: width = height
+            candidate = replace(original, number=self.pad_number.get(),
+                                width=width, height=height,
+                                angle=self._read_number(self.pad_angle, "角度"),
+                                radius=self._read_number(self.pad_radius, "角のR"))
             if isinstance(original, CustomPad):
                 if (candidate.width, candidate.height, candidate.radius) != (original.width, original.height, 0):
                     raise ValueError("合体形状の寸法変更は、Undoで合体前へ戻して元の図形を編集してください。")
@@ -1138,7 +1211,8 @@ class SketcherApp:
             return
         for index, pad in replacements.items():
             self.sketch.pads[index] = pad
-        self._record_change(before)
+        if self._record_change(before) is False:
+            return
         self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self._refresh_pad_list()
         self._refresh()
@@ -1149,6 +1223,8 @@ class SketcherApp:
 
     def _on_canvas_press(self, event: tk.Event) -> None:
         self.canvas.focus_set()
+        if self.tools.press(event):
+            return
         if self.mode == "fillet":
             self._fillet_at(event)
             return
@@ -1168,7 +1244,9 @@ class SketcherApp:
             self._message("校正の実距離を入力して適用するか、選択ツールで校正点の選択を終了してください。")
             return
         hit = next((i for i in range(len(self.sketch.pads) - 1, -1, -1)
-                    if hit_pad(self.sketch.pads[i], point)), None)
+                    if not any(layer in self.canvas.locked_layers for layer in self.sketch.pads[i].layers)
+                    and not all(layer in self.canvas.hidden_layers for layer in self.sketch.pads[i].layers)
+                    and hit_pad(self.sketch.pads[i], point)), None)
         if event.state & 0x0004:
             chosen = set(self.selected_indices)
             if hit is not None:
@@ -1289,9 +1367,12 @@ class SketcherApp:
         if radius < 0 or (self._draw_shape == "roundrect" and radius == 0):
             raise ValueError("角丸パッドのRには正の値を指定してください。")
         return Pad(self.pad_number.get(), (start[0] + point[0]) / 2, (start[1] + point[1]) / 2,
-                   width, height, angle, min(radius, width / 2, height / 2))
+                   width, height, angle, min(radius, width / 2, height / 2),
+                   **dict(self.tools.pad_options(), pad_shape="auto"))
 
     def _on_canvas_drag(self, event: tk.Event) -> None:
+        if self.tools.motion(event):
+            return
         if self._drag is None:
             return
         if self._drag["kind"] == "marquee":
@@ -1312,6 +1393,8 @@ class SketcherApp:
         self._redraw()
 
     def _on_canvas_release(self, event: tk.Event) -> None:
+        if self.tools.release(event):
+            return
         if self._drag is None:
             return
         drag = self._drag
@@ -1369,7 +1452,8 @@ class SketcherApp:
                     self._message(f"パッド {candidate.number} を選択しました。四隅でサイズ変更できます。")
                 else:
                     self._message(f"パッド {candidate.number} を更新しました。寸法とRは右の欄で確認できます。")
-            self._record_change(before)
+            if self._record_change(before) is False:
+                return
         finally:
             self._clear_preview()
             self._refresh_pad_list()
@@ -1426,7 +1510,8 @@ class SketcherApp:
         except ValueError as error:
             self._message(str(error), error=True)
             return
-        self._record_change(before)
+        if self._record_change(before) is False:
+            return
         self.pad_number.set(self._next_pad_number(pad.number))
         self._paste_previews.clear()
         self._snap_guides.clear()
@@ -1449,6 +1534,10 @@ class SketcherApp:
             self._refresh()
 
     def _on_secondary_click(self, event: tk.Event) -> str | None:
+        if self.mode in ("graphic", "point"):
+            self.tools._drawing_points.clear()
+            self._cancel_action(event)
+            return "break"
         if self.mode in ("draw", "pad", "paste", "fillet") or (self._drag is not None and self._drag["kind"] == "marquee"):
             self._cancel_action(event)
             return "break"
@@ -1465,7 +1554,8 @@ class SketcherApp:
         target = Path(directory)
         try:
             try:
-                path = export_footprint(target, name, self.sketch.pads)
+                from .persistence import safe_export_document
+                path = safe_export_document(target, name, self.sketch)
             except FileExistsError:
                 if not messagebox.askyesno(
                     "書き出し先に同名ファイルがあります",
@@ -1473,7 +1563,7 @@ class SketcherApp:
                     parent=self.root,
                 ):
                     return
-                path = export_footprint(target, name, self.sketch.pads, overwrite=True)
+                path = safe_export_document(target, name, self.sketch, overwrite=True)
         except (ValueError, OSError) as error:
             self._message(f"書き出しに失敗しました。 {error}", error=True)
             return

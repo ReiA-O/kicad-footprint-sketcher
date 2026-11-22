@@ -214,6 +214,109 @@ class GuiInteractionTests(unittest.TestCase):
         ]:
             self.assertEqual(float(variable.get()), getattr(pad, name))
 
+    def test_pending_complete_calibration_blocks_selected_edits_until_explicitly_finished(self):
+        from dataclasses import replace
+
+        def select_rows(indices):
+            children = self.app.pad_table.get_children()
+            self.app.pad_table.selection_set([children[index] for index in indices])
+            self.app.pad_table.focus(children[indices[-1]])
+            self.app.pad_table.event_generate("<<TreeviewSelect>>", when="tail")
+            self._pump()
+            self.assertEqual(self.app.selected_indices, set(indices))
+
+        def pending_axis_calibration():
+            self.app._method_combo.current(0)
+            self.app._method_combo.event_generate("<<ComboboxSelected>>", when="tail")
+            self._pump()
+            self._button("横2点＋縦2点を選ぶ")
+            for point in ((150, 445), (750, 425), (300, 220), (320, 340)):
+                self._click(point)
+            self.assertEqual(len(self.app.calibration_points), 4)
+            self.assertEqual(self.app.mode, "idle")
+            return tuple(self.app.calibration_points)
+
+        self._calibrate()
+        self.app.center_snap.set(False)
+        for variable, value in ((self.app.pad_width, "4"), (self.app.pad_height, "1"),
+                                (self.app.pad_angle, "0"), (self.app.pad_radius, "0")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        self._click((0, 0), world=True)
+        self._entry(self.app.pad_width, "1")
+        self._entry(self.app.pad_height, "3")
+        self._click((-1.5, 1), world=True)
+        self._button("選択/移動")
+        select_rows([0, 1])
+        self._entry(self.app.merge_number, "L")
+        self._button("選択図形を合体")
+        self._button("数値サイズで配置")
+        self._entry(self.app.pad_width, "2")
+        self._entry(self.app.pad_height, "1")
+        self._click((3, 0), world=True)
+        self._click((3.5, 0.5), world=True)
+        self._button("選択/移動")
+        baseline, payload = self._state(), self._export_bytes()
+        history = tuple(self.app.history._snapshots)
+        select_rows([1, 2])
+        points = pending_axis_calibration()
+        self._entry(self.app.merge_number, "Blocked")
+        self._entry(self.app.pad_width, "1.6")
+        self.app._width_entry.focus_set()
+        self.app._width_entry.event_generate("<Return>", when="tail")
+        self._pump()
+        actions = (self.app.apply_selected, lambda: self.app.align_selected("x"),
+                   lambda: self.app.align_selected("y", spacing=True), self.app.merge_selected,
+                   lambda: self.app.mirror_selected("x"), lambda: self.app.mirror_selected("y"))
+        for action in actions:
+            action()
+            self._pump()
+            self.assertEqual(self._state(), baseline)
+            self.assertEqual(tuple(self.app.calibration_points), points)
+            self.assertEqual(tuple(self.app.history._snapshots), history)
+            self.assertEqual(self.app.selected_indices, {1, 2})
+            self.assertEqual(self.app.mode, "idle")
+            self.assertIn("選択/移動", self.app.status.get())
+        for button in (self.app._selection_button, self.app._merge_button,
+                       *(button for button, _ in self.app._align_buttons), *self.app._mirror_buttons):
+            self.assertTrue(button.instate(["disabled"]))
+        self.assertEqual(self._export_bytes(), payload)
+        self._button("1操作戻す")
+        self.assertEqual(tuple(self.app.calibration_points), points[:-1])
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self._button("選択/移動")
+        self.assertFalse(self.app.calibration_points)
+        self._entry(self.app.pad_width, "2.4")
+        self.app._width_entry.focus_set()
+        self.app._width_entry.event_generate("<Return>", when="tail")
+        self._pump()
+        self.assertEqual(self.app.sketch.pads,
+                         [baseline[2][0], *(replace(pad, width=2.4) for pad in baseline[2][1:])])
+        self.assertEqual(len(self.app.history._snapshots), len(history) + 1)
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+
+        select_rows([0])
+        points = pending_axis_calibration()
+        self.assertTrue(self.app._fillet_button.instate(["disabled"]))
+        self.app.begin_fillet()
+        self._entry(self.app.fillet_radius, "0.2")
+        self.app._fillet_radius_entry.focus_set()
+        self.app._fillet_radius_entry.event_generate("<Return>", when="tail")
+        self._pump()
+        self.assertEqual(self.app.mode, "idle")
+        self.assertEqual(tuple(self.app.calibration_points), points)
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self._button("選択/移動")
+        self._button("角を選んでフィレット")
+        self.assertEqual(self.app.mode, "fillet")
+        self._escape()
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+
     def test_pad_field_enter_updates_selection_and_validates_only_the_next_placement_template(self):
         from dataclasses import replace
 
