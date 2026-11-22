@@ -1,0 +1,705 @@
+{
+  "status": "completed",
+  "started_at_utc": "2026-11-22T17:08:37.903106+00:00",
+  "repository": "D:\\CodexWork\\projects\\kicad-footprint-sketcher",
+  "run_directory": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1",
+  "python": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "method": "Actual SketcherApp widgets: Entry delete/insert, Button invoke, integer Tk canvas Button-1 events; only file/folder chooser return values are supplied by the harness.",
+  "unverified": [
+    {
+      "item": "Native file and folder dialogs",
+      "reason": "Chooser return values are supplied by the harness.",
+      "method": "Open both samples and select output folders manually on the Windows desktop."
+    },
+    {
+      "item": "Reia manual operation and feel",
+      "reason": "This run is an automated replay.",
+      "method": "Reia operates the normal application and records observations."
+    },
+    {
+      "item": "KiCad footprint editor opening and pad attributes",
+      "reason": "This script only exercises the Sketcher GUI.",
+      "method": "Open each generated .pretty library in KiCad 10 and inspect pad properties."
+    }
+  ],
+  "numerical_evaluation": "Differences from the sample are observations. No unapproved T02 acceptance tolerance is applied.",
+  "cases": [
+    {
+      "image_format": "PNG",
+      "steps": [
+        {
+          "step": "image_opened",
+          "status_text": "下絵を表示しました。校正に使う2点を選んでください。",
+          "mode": "idle"
+        },
+        {
+          "step": "calibrated_10_mm",
+          "status_text": "校正しました。フットプリントの原点を選んでください。",
+          "mode": "idle"
+        },
+        {
+          "step": "center_origin_selected",
+          "status_text": "原点を設定しました。パッドの寸法を入力し、配置を始めてください。",
+          "mode": "idle"
+        },
+        {
+          "step": "pad_1_placed",
+          "status_text": "パッド 1 を配置しました。続けて配置する場合は次の番号を入力してください。",
+          "mode": "pad"
+        },
+        {
+          "step": "pad_2_placed",
+          "status_text": "パッド 2 を配置しました。続けて配置する場合は次の番号を入力してください。",
+          "mode": "pad"
+        },
+        {
+          "step": "center_origin_exported",
+          "status_text": "書き出しました。 D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\PNG-center.pretty\\Stage1_SMD_Demo.kicad_mod",
+          "mode": "idle"
+        },
+        {
+          "step": "arbitrary_origin_exported",
+          "status_text": "書き出しました。 D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\PNG-arbitrary.pretty\\Stage1_SMD_Demo.kicad_mod",
+          "mode": "idle"
+        }
+      ],
+      "clicks": [
+        {
+          "label": "calibration_A",
+          "requested_image_pixel": [
+            150,
+            445
+          ],
+          "canvas_target_before_rounding": [
+            327.0,
+            499.0
+          ],
+          "integer_canvas_click": [
+            327,
+            499
+          ],
+          "effective_image_pixel": [
+            150.0,
+            445.0
+          ],
+          "display_scale": 1.0,
+          "display_offset": [
+            177,
+            54
+          ]
+        },
+        {
+          "label": "calibration_B",
+          "requested_image_pixel": [
+            750,
+            445
+          ],
+          "canvas_target_before_rounding": [
+            927.0,
+            499.0
+          ],
+          "integer_canvas_click": [
+            927,
+            499
+          ],
+          "effective_image_pixel": [
+            750.0,
+            445.0
+          ],
+          "display_scale": 1.0,
+          "display_offset": [
+            177,
+            54
+          ]
+        },
+        {
+          "label": "pad_1",
+          "requested_image_pixel": [
+            300,
+            220
+          ],
+          "canvas_target_before_rounding": [
+            477.0,
+            274.0
+          ],
+          "integer_canvas_click": [
+            477,
+            274
+          ],
+          "effective_image_pixel": [
+            300.0,
+            220.0
+          ],
+          "display_scale": 1.0,
+          "display_offset": [
+            177,
+            54
+          ]
+        },
+        {
+          "label": "pad_2",
+          "requested_image_pixel": [
+            600,
+            340
+          ],
+          "canvas_target_before_rounding": [
+            777.0,
+            394.0
+          ],
+          "integer_canvas_click": [
+            777,
+            394
+          ],
+          "effective_image_pixel": [
+            600.0,
+            340.0
+          ],
+          "display_scale": 1.0,
+          "display_offset": [
+            177,
+            54
+          ]
+        },
+        {
+          "label": "arbitrary_origin_at_pad_1",
+          "requested_image_pixel": [
+            300,
+            220
+          ],
+          "canvas_target_before_rounding": [
+            477.0,
+            274.0
+          ],
+          "integer_canvas_click": [
+            477,
+            274
+          ],
+          "effective_image_pixel": [
+            300.0,
+            220.0
+          ],
+          "display_scale": 1.0,
+          "display_offset": [
+            177,
+            54
+          ]
+        }
+      ],
+      "initial_mapping": {
+        "viewable": true,
+        "canvas_width": 1254,
+        "canvas_height": 668
+      },
+      "window": {
+        "requested_geometry": "1600x1000+0+0",
+        "actual_geometry": "1600x1000+0+0",
+        "screen_width": 1920,
+        "screen_height": 1080,
+        "requested_size_exceeds_screen": false,
+        "tk_patchlevel": "8.6.15",
+        "tk_scaling": 1.3333333333333333,
+        "windowing_system": "win32"
+      },
+      "source_image": "D:\\CodexWork\\projects\\kicad-footprint-sketcher\\examples\\stage1\\land-pattern.png",
+      "source_image_sha256": "460b60fc22eb8559a6218322ca2252234c5bf8829cf047bd5817ece99e55eb2e",
+      "canvas": {
+        "width": 1254,
+        "height": 668,
+        "display_scale": 1.0,
+        "display_offset": [
+          177,
+          54
+        ]
+      },
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666,
+        "display_label": "0.0166666667 mm/px  ・  10 mm",
+        "difference_from_1_over_60_mm_per_pixel": 0.0
+      },
+      "center_origin": {
+        "origin_image_pixel": [
+          450.0,
+          280.0
+        ],
+        "pads": [
+          {
+            "number": "1",
+            "x": -2.5,
+            "y": -1.0,
+            "width": 1.6,
+            "height": 1.2,
+            "angle": 0.0,
+            "radius": 0.0
+          },
+          {
+            "number": "2",
+            "x": 2.5,
+            "y": 1.0,
+            "width": 2.0,
+            "height": 1.2,
+            "angle": 30.0,
+            "radius": 0.25
+          }
+        ],
+        "table_rows": [
+          [
+            "1",
+            "-2.5",
+            "-1",
+            "1.6",
+            "1.2",
+            "0",
+            "0"
+          ],
+          [
+            "2",
+            "2.5",
+            "1",
+            "2",
+            "1.2",
+            "30",
+            "0.25"
+          ]
+        ],
+        "status_text": "操作を取り消しました。",
+        "difference_from_ideal_sample_xy_mm": [
+          {
+            "number": "1",
+            "dx": 0.0,
+            "dy": 0.0
+          },
+          {
+            "number": "2",
+            "dx": 0.0,
+            "dy": 0.0
+          }
+        ],
+        "export": {
+          "path": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\PNG-center.pretty\\Stage1_SMD_Demo.kicad_mod",
+          "sha256": "bb9a748df252516aecfbba3830d4daaabcb227f09ca209cc5264f71e6a6cc519",
+          "size_bytes": 640,
+          "content": "(footprint \"Stage1_SMD_Demo\"\n  (version 20260206)\n  (generator \"kicad_footprint_sketcher\")\n  (layer \"F.Cu\")\n  (property \"Reference\" \"REF**\"\n    (at 0 0 0) (layer \"F.SilkS\") (hide yes)\n    (effects (font (size 1 1) (thickness 0.15)))\n  )\n  (property \"Value\" \"Stage1_SMD_Demo\"\n    (at 0 0 0) (layer \"F.Fab\") (hide yes)\n    (effects (font (size 1 1) (thickness 0.15)))\n  )\n  (attr smd)\n  (pad \"1\" smd rect\n    (at -2.5 -1.0 0)\n    (size 1.6 1.2)\n    (layers \"F.Cu\" \"F.Paste\" \"F.Mask\")\n  )\n  (pad \"2\" smd roundrect\n    (at 2.5 1.0 30.0)\n    (size 2.0 1.2)\n    (layers \"F.Cu\" \"F.Paste\" \"F.Mask\")\n    (roundrect_rratio 0.20833333333333334)\n  )\n)\n",
+          "status_text": "書き出しました。 D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\PNG-center.pretty\\Stage1_SMD_Demo.kicad_mod"
+        }
+      },
+      "arbitrary_origin": {
+        "origin_image_pixel": [
+          300.0,
+          220.0
+        ],
+        "pads": [
+          {
+            "number": "1",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 1.6,
+            "height": 1.2,
+            "angle": 0.0,
+            "radius": 0.0
+          },
+          {
+            "number": "2",
+            "x": 5.0,
+            "y": 2.0,
+            "width": 2.0,
+            "height": 1.2,
+            "angle": 30.0,
+            "radius": 0.25
+          }
+        ],
+        "table_rows": [
+          [
+            "1",
+            "0",
+            "0",
+            "1.6",
+            "1.2",
+            "0",
+            "0"
+          ],
+          [
+            "2",
+            "5",
+            "2",
+            "2",
+            "1.2",
+            "30",
+            "0.25"
+          ]
+        ],
+        "status_text": "原点を設定しました。パッドの寸法を入力し、配置を始めてください。",
+        "difference_from_ideal_sample_xy_mm": [
+          {
+            "number": "1",
+            "dx": 0.0,
+            "dy": 0.0
+          },
+          {
+            "number": "2",
+            "dx": 0.0,
+            "dy": 0.0
+          }
+        ],
+        "export": {
+          "path": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\PNG-arbitrary.pretty\\Stage1_SMD_Demo.kicad_mod",
+          "sha256": "a9ba99f5d2c4e9bb3c2fc930ecd0820b75ac350a454337d708c0c3f102b19c28",
+          "size_bytes": 634,
+          "content": "(footprint \"Stage1_SMD_Demo\"\n  (version 20260206)\n  (generator \"kicad_footprint_sketcher\")\n  (layer \"F.Cu\")\n  (property \"Reference\" \"REF**\"\n    (at 0 0 0) (layer \"F.SilkS\") (hide yes)\n    (effects (font (size 1 1) (thickness 0.15)))\n  )\n  (property \"Value\" \"Stage1_SMD_Demo\"\n    (at 0 0 0) (layer \"F.Fab\") (hide yes)\n    (effects (font (size 1 1) (thickness 0.15)))\n  )\n  (attr smd)\n  (pad \"1\" smd rect\n    (at 0 0 0)\n    (size 1.6 1.2)\n    (layers \"F.Cu\" \"F.Paste\" \"F.Mask\")\n  )\n  (pad \"2\" smd roundrect\n    (at 5.0 2.0 30.0)\n    (size 2.0 1.2)\n    (layers \"F.Cu\" \"F.Paste\" \"F.Mask\")\n    (roundrect_rratio 0.20833333333333334)\n  )\n)\n",
+          "status_text": "書き出しました。 D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\PNG-arbitrary.pretty\\Stage1_SMD_Demo.kicad_mod"
+        }
+      },
+      "status": "completed"
+    },
+    {
+      "image_format": "JPEG",
+      "steps": [
+        {
+          "step": "image_opened",
+          "status_text": "下絵を表示しました。校正に使う2点を選んでください。",
+          "mode": "idle"
+        },
+        {
+          "step": "calibrated_10_mm",
+          "status_text": "校正しました。フットプリントの原点を選んでください。",
+          "mode": "idle"
+        },
+        {
+          "step": "center_origin_selected",
+          "status_text": "原点を設定しました。パッドの寸法を入力し、配置を始めてください。",
+          "mode": "idle"
+        },
+        {
+          "step": "pad_1_placed",
+          "status_text": "パッド 1 を配置しました。続けて配置する場合は次の番号を入力してください。",
+          "mode": "pad"
+        },
+        {
+          "step": "pad_2_placed",
+          "status_text": "パッド 2 を配置しました。続けて配置する場合は次の番号を入力してください。",
+          "mode": "pad"
+        },
+        {
+          "step": "center_origin_exported",
+          "status_text": "書き出しました。 D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\JPEG-center.pretty\\Stage1_SMD_Demo.kicad_mod",
+          "mode": "pad"
+        },
+        {
+          "step": "arbitrary_origin_exported",
+          "status_text": "書き出しました。 D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\JPEG-arbitrary.pretty\\Stage1_SMD_Demo.kicad_mod",
+          "mode": "idle"
+        }
+      ],
+      "clicks": [
+        {
+          "label": "calibration_A",
+          "requested_image_pixel": [
+            150,
+            445
+          ],
+          "canvas_target_before_rounding": [
+            327.0,
+            499.0
+          ],
+          "integer_canvas_click": [
+            327,
+            499
+          ],
+          "effective_image_pixel": [
+            150.0,
+            445.0
+          ],
+          "display_scale": 1.0,
+          "display_offset": [
+            177,
+            54
+          ]
+        },
+        {
+          "label": "calibration_B",
+          "requested_image_pixel": [
+            750,
+            445
+          ],
+          "canvas_target_before_rounding": [
+            927.0,
+            499.0
+          ],
+          "integer_canvas_click": [
+            927,
+            499
+          ],
+          "effective_image_pixel": [
+            750.0,
+            445.0
+          ],
+          "display_scale": 1.0,
+          "display_offset": [
+            177,
+            54
+          ]
+        },
+        {
+          "label": "pad_1",
+          "requested_image_pixel": [
+            300,
+            220
+          ],
+          "canvas_target_before_rounding": [
+            477.0,
+            274.0
+          ],
+          "integer_canvas_click": [
+            477,
+            274
+          ],
+          "effective_image_pixel": [
+            300.0,
+            220.0
+          ],
+          "display_scale": 1.0,
+          "display_offset": [
+            177,
+            54
+          ]
+        },
+        {
+          "label": "pad_2",
+          "requested_image_pixel": [
+            600,
+            340
+          ],
+          "canvas_target_before_rounding": [
+            777.0,
+            394.0
+          ],
+          "integer_canvas_click": [
+            777,
+            394
+          ],
+          "effective_image_pixel": [
+            600.0,
+            340.0
+          ],
+          "display_scale": 1.0,
+          "display_offset": [
+            177,
+            54
+          ]
+        },
+        {
+          "label": "arbitrary_origin_at_pad_1",
+          "requested_image_pixel": [
+            300,
+            220
+          ],
+          "canvas_target_before_rounding": [
+            477.0,
+            274.0
+          ],
+          "integer_canvas_click": [
+            477,
+            274
+          ],
+          "effective_image_pixel": [
+            300.0,
+            220.0
+          ],
+          "display_scale": 1.0,
+          "display_offset": [
+            177,
+            54
+          ]
+        }
+      ],
+      "initial_mapping": {
+        "viewable": true,
+        "canvas_width": 1254,
+        "canvas_height": 668
+      },
+      "window": {
+        "requested_geometry": "1600x1000+0+0",
+        "actual_geometry": "1600x1000+0+0",
+        "screen_width": 1920,
+        "screen_height": 1080,
+        "requested_size_exceeds_screen": false,
+        "tk_patchlevel": "8.6.15",
+        "tk_scaling": 1.3333333333333333,
+        "windowing_system": "win32"
+      },
+      "source_image": "D:\\CodexWork\\projects\\kicad-footprint-sketcher\\examples\\stage1\\land-pattern.jpg",
+      "source_image_sha256": "592ce9779bb326e6117502581c593138fa6d4415820e229ceaac285ad7660034",
+      "canvas": {
+        "width": 1254,
+        "height": 668,
+        "display_scale": 1.0,
+        "display_offset": [
+          177,
+          54
+        ]
+      },
+      "calibration": {
+        "a": [
+          150.0,
+          445.0
+        ],
+        "b": [
+          750.0,
+          445.0
+        ],
+        "distance": 10.0,
+        "mm_per_pixel": 0.016666666666666666,
+        "display_label": "0.0166666667 mm/px  ・  10 mm",
+        "difference_from_1_over_60_mm_per_pixel": 0.0
+      },
+      "center_origin": {
+        "origin_image_pixel": [
+          450.0,
+          280.0
+        ],
+        "pads": [
+          {
+            "number": "1",
+            "x": -2.5,
+            "y": -1.0,
+            "width": 1.6,
+            "height": 1.2,
+            "angle": 0.0,
+            "radius": 0.0
+          },
+          {
+            "number": "2",
+            "x": 2.5,
+            "y": 1.0,
+            "width": 2.0,
+            "height": 1.2,
+            "angle": 30.0,
+            "radius": 0.25
+          }
+        ],
+        "table_rows": [
+          [
+            "1",
+            "-2.5",
+            "-1",
+            "1.6",
+            "1.2",
+            "0",
+            "0"
+          ],
+          [
+            "2",
+            "2.5",
+            "1",
+            "2",
+            "1.2",
+            "30",
+            "0.25"
+          ]
+        ],
+        "status_text": "パッド 2 を配置しました。続けて配置する場合は次の番号を入力してください。",
+        "difference_from_ideal_sample_xy_mm": [
+          {
+            "number": "1",
+            "dx": 0.0,
+            "dy": 0.0
+          },
+          {
+            "number": "2",
+            "dx": 0.0,
+            "dy": 0.0
+          }
+        ],
+        "export": {
+          "path": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\JPEG-center.pretty\\Stage1_SMD_Demo.kicad_mod",
+          "sha256": "bb9a748df252516aecfbba3830d4daaabcb227f09ca209cc5264f71e6a6cc519",
+          "size_bytes": 640,
+          "content": "(footprint \"Stage1_SMD_Demo\"\n  (version 20260206)\n  (generator \"kicad_footprint_sketcher\")\n  (layer \"F.Cu\")\n  (property \"Reference\" \"REF**\"\n    (at 0 0 0) (layer \"F.SilkS\") (hide yes)\n    (effects (font (size 1 1) (thickness 0.15)))\n  )\n  (property \"Value\" \"Stage1_SMD_Demo\"\n    (at 0 0 0) (layer \"F.Fab\") (hide yes)\n    (effects (font (size 1 1) (thickness 0.15)))\n  )\n  (attr smd)\n  (pad \"1\" smd rect\n    (at -2.5 -1.0 0)\n    (size 1.6 1.2)\n    (layers \"F.Cu\" \"F.Paste\" \"F.Mask\")\n  )\n  (pad \"2\" smd roundrect\n    (at 2.5 1.0 30.0)\n    (size 2.0 1.2)\n    (layers \"F.Cu\" \"F.Paste\" \"F.Mask\")\n    (roundrect_rratio 0.20833333333333334)\n  )\n)\n",
+          "status_text": "書き出しました。 D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\JPEG-center.pretty\\Stage1_SMD_Demo.kicad_mod"
+        }
+      },
+      "arbitrary_origin": {
+        "origin_image_pixel": [
+          300.0,
+          220.0
+        ],
+        "pads": [
+          {
+            "number": "1",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 1.6,
+            "height": 1.2,
+            "angle": 0.0,
+            "radius": 0.0
+          },
+          {
+            "number": "2",
+            "x": 5.0,
+            "y": 2.0,
+            "width": 2.0,
+            "height": 1.2,
+            "angle": 30.0,
+            "radius": 0.25
+          }
+        ],
+        "table_rows": [
+          [
+            "1",
+            "0",
+            "0",
+            "1.6",
+            "1.2",
+            "0",
+            "0"
+          ],
+          [
+            "2",
+            "5",
+            "2",
+            "2",
+            "1.2",
+            "30",
+            "0.25"
+          ]
+        ],
+        "status_text": "原点を設定しました。パッドの寸法を入力し、配置を始めてください。",
+        "difference_from_ideal_sample_xy_mm": [
+          {
+            "number": "1",
+            "dx": 0.0,
+            "dy": 0.0
+          },
+          {
+            "number": "2",
+            "dx": 0.0,
+            "dy": 0.0
+          }
+        ],
+        "export": {
+          "path": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\JPEG-arbitrary.pretty\\Stage1_SMD_Demo.kicad_mod",
+          "sha256": "a9ba99f5d2c4e9bb3c2fc930ecd0820b75ac350a454337d708c0c3f102b19c28",
+          "size_bytes": 634,
+          "content": "(footprint \"Stage1_SMD_Demo\"\n  (version 20260206)\n  (generator \"kicad_footprint_sketcher\")\n  (layer \"F.Cu\")\n  (property \"Reference\" \"REF**\"\n    (at 0 0 0) (layer \"F.SilkS\") (hide yes)\n    (effects (font (size 1 1) (thickness 0.15)))\n  )\n  (property \"Value\" \"Stage1_SMD_Demo\"\n    (at 0 0 0) (layer \"F.Fab\") (hide yes)\n    (effects (font (size 1 1) (thickness 0.15)))\n  )\n  (attr smd)\n  (pad \"1\" smd rect\n    (at 0 0 0)\n    (size 1.6 1.2)\n    (layers \"F.Cu\" \"F.Paste\" \"F.Mask\")\n  )\n  (pad \"2\" smd roundrect\n    (at 5.0 2.0 30.0)\n    (size 2.0 1.2)\n    (layers \"F.Cu\" \"F.Paste\" \"F.Mask\")\n    (roundrect_rratio 0.20833333333333334)\n  )\n)\n",
+          "status_text": "書き出しました。 D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\JPEG-arbitrary.pretty\\Stage1_SMD_Demo.kicad_mod"
+        }
+      },
+      "status": "completed"
+    }
+  ],
+  "callback_errors": [],
+  "commit": "6779517462fc3ddd2a7c9292de56cd6075177ae7",
+  "pillow": "12.3.0",
+  "png_jpeg_center_outputs_identical": true,
+  "png_jpeg_arbitrary_outputs_identical": true,
+  "finished_at_utc": "2026-11-22T17:08:40.693423+00:00"
+}

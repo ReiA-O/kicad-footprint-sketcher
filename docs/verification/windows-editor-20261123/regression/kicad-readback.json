@@ -1,0 +1,244 @@
+{
+  "method": "Windows KiCad pcbnew.FootprintLoad API readback; editor GUI opening is a separate manual check.",
+  "version": "10.0.7",
+  "timestamp_utc": "2026-11-22T17:09:22.203857+00:00",
+  "cases": [
+    {
+      "image_format": "PNG",
+      "origin": "center_origin",
+      "source": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\PNG-center.pretty\\Stage1_SMD_Demo.kicad_mod",
+      "footprint_position_mm": [
+        0.0,
+        0.0
+      ],
+      "pads": [
+        {
+          "number": "1",
+          "x": -2.5,
+          "y": -1.0,
+          "width": 1.6,
+          "height": 1.2,
+          "angle": 0.0,
+          "radius": 0.0,
+          "shape": "rect",
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "smd": true,
+          "difference_from_gui_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "angle": 0.0,
+            "radius": 0.0
+          }
+        },
+        {
+          "number": "2",
+          "x": 2.5,
+          "y": 1.0,
+          "width": 2.0,
+          "height": 1.2,
+          "angle": 30.0,
+          "radius": 0.25,
+          "shape": "roundrect",
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "smd": true,
+          "difference_from_gui_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "angle": 0.0,
+            "radius": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "image_format": "PNG",
+      "origin": "arbitrary_origin",
+      "source": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\PNG-arbitrary.pretty\\Stage1_SMD_Demo.kicad_mod",
+      "footprint_position_mm": [
+        0.0,
+        0.0
+      ],
+      "pads": [
+        {
+          "number": "1",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 1.6,
+          "height": 1.2,
+          "angle": 0.0,
+          "radius": 0.0,
+          "shape": "rect",
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "smd": true,
+          "difference_from_gui_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "angle": 0.0,
+            "radius": 0.0
+          }
+        },
+        {
+          "number": "2",
+          "x": 5.0,
+          "y": 2.0,
+          "width": 2.0,
+          "height": 1.2,
+          "angle": 30.0,
+          "radius": 0.25,
+          "shape": "roundrect",
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "smd": true,
+          "difference_from_gui_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "angle": 0.0,
+            "radius": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "image_format": "JPEG",
+      "origin": "center_origin",
+      "source": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\JPEG-center.pretty\\Stage1_SMD_Demo.kicad_mod",
+      "footprint_position_mm": [
+        0.0,
+        0.0
+      ],
+      "pads": [
+        {
+          "number": "1",
+          "x": -2.5,
+          "y": -1.0,
+          "width": 1.6,
+          "height": 1.2,
+          "angle": 0.0,
+          "radius": 0.0,
+          "shape": "rect",
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "smd": true,
+          "difference_from_gui_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "angle": 0.0,
+            "radius": 0.0
+          }
+        },
+        {
+          "number": "2",
+          "x": 2.5,
+          "y": 1.0,
+          "width": 2.0,
+          "height": 1.2,
+          "angle": 30.0,
+          "radius": 0.25,
+          "shape": "roundrect",
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "smd": true,
+          "difference_from_gui_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "angle": 0.0,
+            "radius": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "image_format": "JPEG",
+      "origin": "arbitrary_origin",
+      "source": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\gui-run-20261122T170837Z-1f6a7ba1\\JPEG-arbitrary.pretty\\Stage1_SMD_Demo.kicad_mod",
+      "footprint_position_mm": [
+        0.0,
+        0.0
+      ],
+      "pads": [
+        {
+          "number": "1",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 1.6,
+          "height": 1.2,
+          "angle": 0.0,
+          "radius": 0.0,
+          "shape": "rect",
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "smd": true,
+          "difference_from_gui_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "angle": 0.0,
+            "radius": 0.0
+          }
+        },
+        {
+          "number": "2",
+          "x": 5.0,
+          "y": 2.0,
+          "width": 2.0,
+          "height": 1.2,
+          "angle": 30.0,
+          "radius": 0.25,
+          "shape": "roundrect",
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "smd": true,
+          "difference_from_gui_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "angle": 0.0,
+            "radius": 0.0
+          }
+        }
+      ]
+    }
+  ],
+  "status": "completed"
+}
