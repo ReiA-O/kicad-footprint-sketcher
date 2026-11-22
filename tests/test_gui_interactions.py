@@ -214,6 +214,334 @@ class GuiInteractionTests(unittest.TestCase):
         ]:
             self.assertEqual(float(variable.get()), getattr(pad, name))
 
+    def test_numeric_continuous_placement_frozen_copy_and_group_paste_undo(self):
+        self._calibrate()
+        self.app.center_snap.set(False)
+        for variable, value in ((self.app.pad_number, "1"), (self.app.pad_width, "1.6"),
+                                (self.app.pad_height, "1.2"), (self.app.pad_angle, "30"),
+                                (self.app.pad_radius, "0.25")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        targets = [self._click(point, world=True) for point in ((-3, -1), (1, 1))]
+        originals = tuple(self.app.sketch.pads)
+        self.assertEqual([pad.number for pad in originals], ["1", "2"])
+        for pad, target in zip(originals, targets):
+            self._assert_point((pad.x, pad.y), target)
+            self.assertEqual((pad.width, pad.height, pad.angle, pad.radius), (1.6, 1.2, 30, 0.25))
+        self.assertEqual((self.app.mode, self.app.tool.get(), self.app.pad_number.get()), ("pad", "pad", "3"))
+
+        self._button("選択/移動")
+        self._click((originals[0].x, originals[0].y), world=True)
+        screen = self._screen((originals[1].x, originals[1].y), world=True)
+        self._event("<Button-1>", screen, state=4)
+        self._event("<ButtonRelease-1>", screen, state=4)
+        self.assertEqual(self.app.selected_indices, {0, 1})
+        self._button("コピー")
+        copied = tuple(self.app.clipboard)
+        self.assertEqual(copied, originals)
+
+        # Updating the originals after Copy must not change the captured group.
+        self.assertTrue(self.app._number_entry.instate(["disabled"]))
+        for variable, value in ((self.app.pad_width, "2.4"), (self.app.pad_height, "0.8"),
+                                (self.app.pad_angle, "0"), (self.app.pad_radius, "0.2")):
+            self._entry(variable, value)
+        self._button("選択パッドに適用")
+        edited = tuple(self.app.sketch.pads)
+        self.assertEqual([pad.number for pad in edited], ["1", "2"])
+        self.assertNotEqual(edited, copied)
+        self.assertEqual(tuple(self.app.clipboard), copied)
+
+        self._button("貼り付け")
+        target = self._click((-1, 2.5), world=True)
+        self.assertEqual(tuple(self.app.sketch.pads[:2]), edited)
+        pasted = tuple(self.app.sketch.pads[2:])
+        self.assertEqual([pad.number for pad in pasted], ["3", "4"])
+        self._assert_point((sum(pad.x for pad in pasted) / 2, sum(pad.y for pad in pasted) / 2), target)
+        self._assert_point((pasted[1].x - pasted[0].x, pasted[1].y - pasted[0].y),
+                           (copied[1].x - copied[0].x, copied[1].y - copied[0].y))
+        for pad, source in zip(pasted, copied):
+            self.assertEqual((pad.width, pad.height, pad.angle, pad.radius),
+                             (source.width, source.height, source.angle, source.radius))
+        self.assertEqual(self.app.mode, "paste")
+
+        self._button("1操作戻す")
+        self.assertEqual(tuple(self.app.sketch.pads), edited)
+        self.assertEqual(tuple(self.app.clipboard), copied)
+        self.assertEqual(self.app.mode, "paste")
+        self._click((0, 2), world=True)
+        self.assertEqual([pad.number for pad in self.app.sketch.pads], ["1", "2", "3", "4"])
+        self.assertEqual(self.app.mode, "paste")
+        self._escape()
+        self.assertEqual((self.app.mode, self.app.tool.get()), ("idle", "select"))
+
+    def test_undo_commits_pending_points_drag_cancel_and_image_change(self):
+        self.app.center_snap.set(False)
+        self._button("校正の2点を選ぶ")
+        self._click((150, 445))
+        self._click((750, 445))
+        self._entry(self.app.distance, "10")
+        self._button("校正を適用")
+        calibrated = self._state()
+        self._button("画像の中央を原点に")
+        origin_set = self._state()
+        for variable, value in ((self.app.pad_number, "1"), (self.app.pad_width, "1.2"),
+                                (self.app.pad_height, "0.8"), (self.app.pad_angle, "0"),
+                                (self.app.pad_radius, "0")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        self._click((-3, -1), world=True)
+        self._button("選択/移動")
+        self._click((-3, -1), world=True)
+        created = self._state()
+
+        self._button("校正の2点を選ぶ")
+        a = self._click((150, 445))
+        self.assertEqual(self.app.calibration_points, [a])
+        self._button("1操作戻す")
+        self.assertEqual(self.app.calibration_points, [])
+        self.assertEqual(self._state(), created)
+        self._escape()
+
+        pad = self.app.sketch.pads[0]
+        self._world_event("<Button-1>", (pad.x, pad.y))
+        self._world_event("<B1-Motion>", (pad.x + 1, pad.y + 0.5))
+        self.assertTrue(self.app._preview_pad is not None or self.app._preview_pads)
+        self.assertEqual(self._state(), created)
+        self._button("1操作戻す")
+        self.assertIsNone(self.app._drag)
+        self.assertIsNone(self.app._preview_pad)
+        self.assertFalse(self.app._preview_pads)
+        self.assertEqual(self._state(), created)
+        self._world_event("<ButtonRelease-1>", (pad.x + 1, pad.y + 0.5))
+        self.assertEqual(self._state(), created)
+
+        self._entry(self.app.pad_width, "1.8")
+        self._button("選択パッドに適用")
+        edited = self._state()
+        pad = self.app.sketch.pads[0]
+        self._drag_world((pad.x, pad.y), (pad.x + 1, pad.y + 0.5))
+        moved = self._state()
+        pad = self.app.sketch.pads[0]
+        corners = pad_corners(pad)
+        fixed, moving = corners[0], corners[2]
+        target = tuple(a + 1.2 * (b - a) for a, b in zip(fixed, moving))
+        self._drag_world(moving, target)
+        resized = self._state()
+        self.assertNotEqual(resized, moved)
+
+        # View, Copy and export must not consume an additional history step.
+        self._button("＋")
+        self._pan(17, -9)
+        self._button("全体表示")
+        self._button("コピー")
+        self._export_bytes()
+        for expected in (moved, edited, created, origin_set, calibrated, (None, None, ())):
+            self._button("1操作戻す")
+            self.assertEqual(self._state(), expected)
+        self.assertFalse(self.app.history.can_undo)
+
+        self._calibrate()
+        for variable, value in ((self.app.pad_number, "1"), (self.app.pad_width, "1.2"),
+                                (self.app.pad_height, "0.8"), (self.app.pad_angle, "0"),
+                                (self.app.pad_radius, "0")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        self._click((-3, -1), world=True)
+        self.assertTrue(self.app.history.can_undo)
+        with patch("footprint_sketcher.gui.filedialog.askopenfilename", return_value=str(SAMPLE)), \
+             patch("footprint_sketcher.gui.messagebox.askyesno", return_value=True):
+            self._button("下絵を開く…")
+        self.assertEqual(self._state(), (None, None, ()))
+        self.assertFalse(self.app.history.can_undo)
+        self.assertTrue(self.app._undo_button.instate(["disabled"]))
+
+    def test_multi_alignment_distribution_and_mass_attributes_preserve_numbers(self):
+        self._calibrate()
+        self.app.center_snap.set(False)
+        for variable, value in ((self.app.pad_number, "1"), (self.app.pad_width, "0.8"),
+                                (self.app.pad_height, "0.6"), (self.app.pad_angle, "0"),
+                                (self.app.pad_radius, "0")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        for point in ((-5, -3), (-2, -1), (4, 2), (6, 3)):
+            self._click(point, world=True)
+        self._button("選択/移動")
+        baseline = self._state()
+        original = tuple(self.app.sketch.pads)
+
+        def select_three():
+            self._click((original[0].x, original[0].y), world=True)
+            for pad in original[1:3]:
+                screen = self._screen((pad.x, pad.y), world=True)
+                self._event("<Button-1>", screen, state=4)
+                self._event("<ButtonRelease-1>", screen, state=4)
+            self.assertEqual(self.app.selected_indices, {0, 1, 2})
+            self.assertEqual(len(self.app.canvas.find_withtag("selection-outline")), 3)
+            self.assertEqual(len(self.app.canvas.find_withtag("selection-handle")), 0)
+
+        for text, axis in (("横中心揃え", "y"), ("縦中心揃え", "x")):
+            with self.subTest(alignment=text):
+                select_three()
+                mean = sum(getattr(pad, axis) for pad in original[:3]) / 3
+                self._button(text)
+                for before, after in zip(original[:3], self.app.sketch.pads[:3]):
+                    self.assertAlmostEqual(getattr(after, axis), mean)
+                    other = "x" if axis == "y" else "y"
+                    self.assertEqual(getattr(after, other), getattr(before, other))
+                    self.assertEqual((after.number, after.width, after.height, after.angle, after.radius),
+                                     (before.number, before.width, before.height, before.angle, before.radius))
+                self.assertEqual(self.app.sketch.pads[3], original[3])
+                self._button("1操作戻す")
+                self.assertEqual(self._state(), baseline)
+
+        for text, axis in (("横等間隔", "x"), ("縦等間隔", "y")):
+            with self.subTest(distribution=text):
+                select_three()
+                order = sorted(range(3), key=lambda index: getattr(original[index], axis))
+                low, middle, high = order
+                self._button(text)
+                self.assertEqual(getattr(self.app.sketch.pads[low], axis), getattr(original[low], axis))
+                self.assertEqual(getattr(self.app.sketch.pads[high], axis), getattr(original[high], axis))
+                self.assertAlmostEqual(getattr(self.app.sketch.pads[middle], axis),
+                                       (getattr(original[low], axis) + getattr(original[high], axis)) / 2)
+                other = "x" if axis == "y" else "y"
+                for before, after in zip(original[:3], self.app.sketch.pads[:3]):
+                    self.assertEqual(getattr(after, other), getattr(before, other))
+                    self.assertEqual(after.number, before.number)
+                self.assertEqual(self.app.sketch.pads[3], original[3])
+                self._button("1操作戻す")
+                self.assertEqual(self._state(), baseline)
+
+        select_three()
+        self.assertTrue(self.app._number_entry.instate(["disabled"]))
+        for variable, value in ((self.app.pad_width, "1.6"), (self.app.pad_height, "0.8"),
+                                (self.app.pad_angle, "30"), (self.app.pad_radius, "0.2")):
+            self._entry(variable, value)
+        self._button("選択パッドに適用")
+        for before, after in zip(original[:3], self.app.sketch.pads[:3]):
+            self.assertEqual((after.number, after.x, after.y), (before.number, before.x, before.y))
+            self.assertEqual((after.width, after.height, after.angle, after.radius), (1.6, 0.8, 30, 0.2))
+        self.assertEqual(self.app.sketch.pads[3], original[3])
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), baseline)
+
+    def test_center_snap_shift_axis_lock_and_group_move_keep_outside_pad_unchanged(self):
+        self._calibrate()
+        self.assertTrue(self.app.center_snap.get())
+        self.app.center_snap.set(False)
+        for variable, value in ((self.app.pad_number, "1"), (self.app.pad_width, "1"),
+                                (self.app.pad_height, "0.8"), (self.app.pad_angle, "0"),
+                                (self.app.pad_radius, "0")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        for point in ((-4, -1), (0, 1), (4, -2)):
+            self._click(point, world=True)
+        self._button("選択/移動")
+        baseline = self._state()
+        originals = tuple(self.app.sketch.pads)
+        first = originals[0]
+
+        self.app._snap_check.invoke()
+        self._pump()
+        self.assertTrue(self.app.center_snap.get())
+        self._click((first.x, first.y), world=True)
+        _, raw_end = self._drag_world((first.x, first.y), (0.05, -0.2))
+        snapped = self.app.sketch.pads[0]
+        self.assertEqual(snapped.x, originals[1].x)
+        self.assertAlmostEqual(snapped.y, raw_end[1])
+        self.assertEqual(tuple(self.app.sketch.pads[1:]), originals[1:])
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), baseline)
+
+        self.app._snap_check.invoke()
+        self._pump()
+        self.assertFalse(self.app.center_snap.get())
+        self._click((first.x, first.y), world=True)
+        _, raw_end = self._drag_world((first.x, first.y), (0.05, -0.2))
+        self._assert_point((self.app.sketch.pads[0].x, self.app.sketch.pads[0].y), raw_end)
+        self.assertNotEqual(self.app.sketch.pads[0].x, originals[1].x)
+        self._button("1操作戻す")
+
+        self._click((first.x, first.y), world=True)
+        start = self._world_event("<Button-1>", (first.x, first.y))
+        end_screen = self._screen((first.x + 1, first.y + 0.3), world=True)
+        self._event("<B1-Motion>", end_screen, state=1 | 256)
+        image_end = self._event("<ButtonRelease-1>", end_screen, state=1)
+        end = self.app.sketch.image_to_mm(image_end)
+        shifted = self.app.sketch.pads[0]
+        self.assertAlmostEqual(shifted.x, first.x + end[0] - start[0])
+        self.assertEqual(shifted.y, first.y)
+        self.assertEqual(tuple(self.app.sketch.pads[1:]), originals[1:])
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), baseline)
+
+        self._click((first.x, first.y), world=True)
+        screen = self._screen((originals[1].x, originals[1].y), world=True)
+        self._event("<Button-1>", screen, state=4)
+        self._event("<ButtonRelease-1>", screen, state=4)
+        self.assertEqual(self.app.selected_indices, {0, 1})
+        start = self._world_event("<Button-1>", (first.x, first.y))
+        self._world_event("<B1-Motion>", (first.x + 1.5, first.y + 0.75))
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(set(self.app._preview_pads), {0, 1})
+        self.assertEqual(len(self.app.canvas.find_withtag("pad-2")), 1)
+        self.assertFalse(self.app.canvas.find_withtag("pad-0"))
+        self.assertFalse(self.app.canvas.find_withtag("pad-1"))
+        self.assertEqual(len(self.app.canvas.find_withtag("preview-pad-0")), 1)
+        self.assertEqual(len(self.app.canvas.find_withtag("preview-pad-1")), 1)
+        self.assertFalse(self.app.canvas.find_withtag("selection-handle"))
+        end = self._world_event("<ButtonRelease-1>", (first.x + 1.5, first.y + 0.75))
+        delta = (end[0] - start[0], end[1] - start[1])
+        for before, after in zip(originals[:2], self.app.sketch.pads[:2]):
+            self._assert_point((after.x, after.y), (before.x + delta[0], before.y + delta[1]))
+            self.assertEqual((after.number, after.width, after.height, after.angle, after.radius),
+                             (before.number, before.width, before.height, before.angle, before.radius))
+        self._assert_point((self.app.sketch.pads[1].x - self.app.sketch.pads[0].x,
+                            self.app.sketch.pads[1].y - self.app.sketch.pads[0].y),
+                           (originals[1].x - first.x, originals[1].y - first.y))
+        self.assertEqual(self.app.sketch.pads[2], originals[2])
+        self._button("1操作戻す")
+        self.assertEqual(self._state(), baseline)
+
+    def test_entry_shortcuts_do_not_invoke_document_actions_or_os_clipboard(self):
+        self._calibrate()
+        self.app.center_snap.set(False)
+        self._draw("矩形パッド", (-4, -2), (-2, 0))
+        self._button("選択/移動")
+        self._button("コピー")
+        baseline, clipboard = self._state(), self.app.clipboard
+        entry = self.app._width_entry
+        original_tags = entry.bindtags()
+        # Keep the real widget-to-toplevel shortcut route, but remove Entry's
+        # native class bindings so this test cannot touch the OS clipboard.
+        entry.bindtags((str(entry), str(self.root)))
+        try:
+            entry.focus_force()
+            self._pump()
+            self.assertEqual(self.root.focus_get(), entry)
+            with patch.object(self.app, "undo", wraps=self.app.undo) as undo, \
+                 patch.object(self.app, "copy_selected", wraps=self.app.copy_selected) as copy, \
+                 patch.object(self.app, "begin_paste", wraps=self.app.begin_paste) as paste:
+                for key in ("z", "c", "v"):
+                    entry.event_generate(f"<Control-{key}>", when="tail")
+                    self._pump()
+                undo.assert_not_called()
+                copy.assert_not_called()
+                paste.assert_not_called()
+                self.assertEqual(self._state(), baseline)
+                self.assertEqual(self.app.clipboard, clipboard)
+
+                # A Canvas event proves the same bound action can reach the spy.
+                self.app.canvas.focus_force()
+                self._pump()
+                self.app.canvas.event_generate("<Control-c>", when="tail")
+                self._pump()
+                copy.assert_called_once_with()
+                undo.assert_not_called()
+                paste.assert_not_called()
+        finally:
+            entry.bindtags(original_tags)
+
     def test_drag_creation_stays_in_tool_and_advances_only_the_next_number(self):
         self._calibrate()
         cases = (

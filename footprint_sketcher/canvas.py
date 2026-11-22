@@ -131,6 +131,10 @@ class SketchCanvas(tk.Canvas):
         selected_index: int | None = None,
         preview_pad: Pad | None = None,
         calibration_axes: bool = False,
+        selected_indices: list[int] | None = None,
+        preview_pads: dict[int, Pad] | None = None,
+        new_previews: list[Pad] | None = None,
+        guides: list[tuple[str, float]] | None = None,
     ) -> None:
         self.delete("all")
         width, height = self.winfo_width(), self.winfo_height()
@@ -157,14 +161,47 @@ class SketchCanvas(tk.Canvas):
             else:
                 points = [calibration.a, calibration.b]
         if sketch.origin is not None:
+            selected = list(dict.fromkeys(
+                index for index in (selected_indices if selected_indices is not None else [selected_index])
+                if index is not None and 0 <= index < len(sketch.pads)
+            ))
+            primary = selected_index if selected_index in selected else None
+            replacements = {
+                index: pad for index, pad in (preview_pads or {}).items()
+                if 0 <= index < len(sketch.pads)
+            }
+            standalone_preview = preview_pad
+            if preview_pad is not None and primary is not None:
+                replacements.setdefault(primary, preview_pad)
+                standalone_preview = None
             for index, pad in enumerate(sketch.pads):
-                if preview_pad is not None and index == selected_index:
+                if index in replacements:
                     continue
                 self._draw_pad(pad, sketch, index=index)
-            if preview_pad is not None:
-                self._draw_pad(preview_pad, sketch, preview=True)
-            if selected_index is not None and 0 <= selected_index < len(sketch.pads):
-                self._draw_selection(preview_pad or sketch.pads[selected_index], sketch)
+            for index in sorted(replacements):
+                self._draw_pad(replacements[index], sketch, index=index, preview=True)
+            if standalone_preview is not None:
+                self._draw_pad(standalone_preview, sketch, preview=True)
+            for pad in new_previews or []:
+                self._draw_pad(pad, sketch, preview=True)
+            # Draw the primary last so its handles remain above other outlines.
+            for index in [item for item in selected if item != primary] + (
+                [primary] if primary is not None else []
+            ):
+                self._draw_selection(
+                    replacements.get(index, sketch.pads[index]),
+                    sketch,
+                    index=index,
+                    handles=index == primary and len(selected) == 1,
+                )
+            for axis, value in guides or []:
+                x, y = self.image_to_canvas(sketch.mm_to_image((value, 0) if axis == "x" else (0, value)))
+                if axis == "x" and 0 <= x <= width:
+                    self.create_line(x, 0, x, height, fill="#b56e00", dash=(3, 3),
+                                     tags=("center-snap-guide", "snap-guide-x"))
+                elif axis == "y" and 0 <= y <= height:
+                    self.create_line(0, y, width, y, fill="#b56e00", dash=(3, 3),
+                                     tags=("center-snap-guide", "snap-guide-y"))
             self._draw_origin(sketch.origin)
         self._draw_calibration(points, axes=axes, active=bool(candidate_points))
 
@@ -270,7 +307,8 @@ class SketchCanvas(tk.Canvas):
             "outline": BLUE if preview else TEAL,
             "width": 2,
             "stipple": "gray25" if preview else "gray50",
-            "tags": ("preview",) if preview else ("pad", f"pad-{index}"),
+            "tags": (("preview", f"preview-pad-{index}") if index is not None else ("preview",))
+                    if preview else ("pad", f"pad-{index}"),
         }
         if preview:
             options["dash"] = (5, 3)
@@ -279,7 +317,14 @@ class SketchCanvas(tk.Canvas):
         if 0 <= cx <= self.winfo_width() and 0 <= cy <= self.winfo_height():
             self.create_text(cx, cy, text=pad.number, fill=INK)
 
-    def _draw_selection(self, pad: Pad, sketch: Sketch) -> None:
+    def _draw_selection(
+        self,
+        pad: Pad,
+        sketch: Sketch,
+        *,
+        index: int | None = None,
+        handles: bool = True,
+    ) -> None:
         corners = [
             (-pad.width / 2, -pad.height / 2),
             (pad.width / 2, -pad.height / 2),
@@ -292,8 +337,11 @@ class SketchCanvas(tk.Canvas):
             fill="",
             outline=BLUE,
             width=2,
-            tags=("selection", "selection-outline"),
+            tags=("selection", "selection-outline", f"selected-pad-{index}")
+                 if index is not None else ("selection", "selection-outline"),
         )
+        if not handles:
+            return
         for index, (x, y) in enumerate(vertices):
             if not (-5 <= x <= self.winfo_width() + 5 and -5 <= y <= self.winfo_height() + 5):
                 continue
