@@ -13,6 +13,7 @@ from PIL import Image
 
 from .canvas import SketchCanvas, pad_outline
 from .interaction import hit_pad, pad_corners, resize_pad
+from .editing import Snapshot, UndoHistory, align_centers, distribute_centers, duplicate_pads
 from .model import PAD_LAYERS, AxisCalibration, Calibration, Pad, Point, Sketch, export_footprint
 
 
@@ -25,7 +26,7 @@ TEAL = "#08695e"
 BLUE = "#234f9a"
 ERROR = "#9b3324"
 
-Mode = Literal["idle", "calibration", "origin", "pad", "draw"]
+Mode = Literal["idle", "calibration", "origin", "pad", "draw", "paste"]
 AXIS_METHOD = "横2点＋縦2点（標準）"
 UNIFORM_METHOD = "2点・共通縮尺（補助）"
 
@@ -54,13 +55,21 @@ class SketcherApp:
         self.sketch = Sketch()
         self.mode: Mode = "idle"
         self.calibration_points: list[Point] = []
-        self.selected_index: int | None = None
+        self._selected_index: int | None = None
+        self.selected_indices: set[int] = set()
+        self.history = UndoHistory()
+        self.clipboard: tuple[Pad, ...] = ()
         self._drag: dict | None = None
         self._preview_pad: Pad | None = None
+        self._preview_pads: dict[int, Pad] = {}
+        self._paste_previews: list[Pad] = []
+        self._snap_guides: list[tuple[str, float]] = []
         self._pan_start: Point | None = None
         self._draw_shape = "rect"
         self.tool = tk.StringVar(root, "select")
         self.zoom_label = tk.StringVar(root, "100%")
+        self.center_snap = tk.BooleanVar(root, True)
+        self.selection_label = tk.StringVar(root, "選択 0個")
 
         self.image_name = tk.StringVar(root, "下絵未選択")
         self.distance = tk.StringVar(root)
@@ -81,6 +90,24 @@ class SketcherApp:
         self._configure_style()
         self._build_layout()
         self._refresh()
+
+    @property
+    def selected_index(self) -> int | None:
+        return self._selected_index
+
+    @selected_index.setter
+    def selected_index(self, index: int | None) -> None:
+        self._selected_index = index
+        self.selected_indices = {index} if index is not None else set()
+
+    def _set_selection(self, indices, primary: int | None = None) -> None:
+        self.selected_indices = {index for index in indices if 0 <= index < len(self.sketch.pads)}
+        self._selected_index = (primary if primary in self.selected_indices else
+                                max(self.selected_indices) if self.selected_indices else None)
+
+    def _record_change(self, before: Snapshot) -> None:
+        if Snapshot.capture(self.sketch) != before:
+            self.history.checkpoint(before)
 
     def _configure_style(self) -> None:
         style = ttk.Style(self.root)
@@ -119,6 +146,12 @@ class SketcherApp:
         header = ttk.Frame(shell, padding=(14, 9))
         header.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         ttk.Label(header, text="Footprint Sketcher", style="Title.TLabel").pack(side="left")
+        self._undo_button = ttk.Button(header, text="1操作戻す", command=self.undo)
+        self._undo_button.pack(side="left", padx=(20, 4))
+        self._copy_button = ttk.Button(header, text="コピー", command=self.copy_selected)
+        self._copy_button.pack(side="left", padx=4)
+        self._paste_button = ttk.Button(header, text="貼り付け", command=self.begin_paste)
+        self._paste_button.pack(side="left", padx=4)
         ttk.Label(header, text="KiCad 10.0", style="Hint.TLabel").pack(side="right")
 
         work = ttk.Frame(shell, padding=10)
@@ -135,6 +168,7 @@ class SketcherApp:
         self.canvas.bind("<Button-1>", self._on_canvas_press)
         self.canvas.bind("<B1-Motion>", self._on_canvas_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_canvas_release)
+        self.canvas.bind("<Motion>", self._on_canvas_motion)
         self.canvas.bind("<MouseWheel>", self._on_wheel)
         self.canvas.bind("<Button-4>", lambda event: self._zoom_at(1.2, (event.x, event.y)))
         self.canvas.bind("<Button-5>", lambda event: self._zoom_at(1 / 1.2, (event.x, event.y)))
@@ -142,6 +176,7 @@ class SketcherApp:
         self.canvas.bind("<B2-Motion>", self._pan)
         self.canvas.bind("<ButtonRelease-2>", self._end_pan)
         self._build_pad_list(work)
+        self._build_alignment_tools(work)
 
         self._build_sidebar(shell)
 
@@ -150,6 +185,9 @@ class SketcherApp:
         self._status_label = ttk.Label(footer, textvariable=self.status)
         self._status_label.pack(fill="x")
         self.root.bind("<Escape>", self._cancel_action)
+        self.root.bind("<Control-z>", lambda event: self._shortcut(event, self.undo))
+        self.root.bind("<Control-c>", lambda event: self._shortcut(event, self.copy_selected))
+        self.root.bind("<Control-v>", lambda event: self._shortcut(event, self.begin_paste))
 
     def _build_tools(self, parent: ttk.Frame) -> None:
         tools = ttk.Frame(parent)
@@ -162,6 +200,9 @@ class SketcherApp:
                                      command=lambda value=shape: self.begin_draw(value))
             button.pack(side="left", padx=(5, 0))
             self._draw_buttons.append(button)
+        self._numeric_tool = ttk.Radiobutton(tools, text="数値サイズで配置", variable=self.tool,
+                                            value="pad", command=self.begin_placement)
+        self._numeric_tool.pack(side="left", padx=(5, 0))
         ttk.Button(tools, text="全体表示", command=self._fit_view).pack(side="right")
         ttk.Button(tools, text="＋", width=3, command=lambda: self._zoom_at(1.2)).pack(side="right")
         ttk.Label(tools, textvariable=self.zoom_label, width=6, anchor="center").pack(side="right")
@@ -255,7 +296,7 @@ class SketcherApp:
 
     def _build_pad_list(self, parent: ttk.Frame) -> None:
         frame = ttk.Frame(parent)
-        frame.grid(row=3, column=0, sticky="ew", pady=(9, 0))
+        frame.grid(row=4, column=0, sticky="ew", pady=(9, 0))
         frame.columnconfigure(0, weight=1)
         columns = {
             "number": "番号",
@@ -266,7 +307,8 @@ class SketcherApp:
             "angle": "角度 (°)",
             "radius": "R (mm)",
         }
-        self.pad_table = ttk.Treeview(frame, columns=tuple(columns), show="headings", height=3)
+        self.pad_table = ttk.Treeview(frame, columns=tuple(columns), show="headings", height=3,
+                                     selectmode="extended")
         for key, label in columns.items():
             self.pad_table.heading(key, text=label, anchor="center")
             self.pad_table.column(key, width=64, minwidth=45, anchor="center")
@@ -285,6 +327,29 @@ class SketcherApp:
 
         self.pad_table.configure(xscrollcommand=sync_horizontal)
         self.pad_table.bind("<<TreeviewSelect>>", self._on_table_select)
+        self.pad_table.bind("<Button-1>", self._on_table_press)
+
+    def _build_alignment_tools(self, parent: ttk.Frame) -> None:
+        bar = ttk.Frame(parent)
+        bar.grid(row=3, column=0, sticky="ew", pady=(6, 0))
+        self._align_buttons = []
+        for column, (text, axis, spacing) in enumerate((
+            ("横中心揃え", "y", False), ("縦中心揃え", "x", False),
+            ("横等間隔", "x", True), ("縦等間隔", "y", True),
+        )):
+            button = ttk.Button(bar, text=text, command=lambda a=axis, s=spacing: self.align_selected(a, s))
+            button.grid(row=0, column=column, padx=(0, 3))
+            self._align_buttons.append((button, 3 if spacing else 2))
+        self._snap_check = ttk.Checkbutton(bar, text="中心スナップ", variable=self.center_snap)
+        self._snap_check.grid(row=0, column=4, padx=4)
+        ttk.Label(bar, textvariable=self.selection_label).grid(row=0, column=5, padx=4)
+        def fit(event):
+            compact = event.width < 650
+            for index, (button, _) in enumerate(self._align_buttons):
+                button.grid_configure(row=index // 2 if compact else 0, column=index % 2 if compact else index)
+            for offset, widget in enumerate(bar.winfo_children()[4:]):
+                widget.grid_configure(row=0, column=(2 if compact else 4) + offset)
+        bar.bind("<Configure>", fit)
 
     def _build_controls(self, panel: ttk.Frame) -> None:
         ttk.Button(panel, text="下絵を開く…", command=self.open_image).grid(
@@ -317,8 +382,8 @@ class SketcherApp:
         ttk.Label(panel, text=" / ".join(PAD_LAYERS), style="Hint.TLabel").grid(
             row=12, column=0, columnspan=2, sticky="w"
         )
-        self._field(panel, "幅 (mm)", self.pad_width, 13, 0)
-        self._field(panel, "高さ (mm)", self.pad_height, 13, 1)
+        self._width_entry = self._field(panel, "幅 (mm)", self.pad_width, 13, 0)
+        self._height_entry = self._field(panel, "高さ (mm)", self.pad_height, 13, 1)
         self._field(panel, "角度 (°・反時計回り)", self.pad_angle, 15, 0)
         self._field(panel, "角のR (mm)", self.pad_radius, 15, 1)
         self._number_entry = self._field(panel, "パッド番号", self.pad_number, 17, 0)
@@ -355,18 +420,26 @@ class SketcherApp:
         calibration = self.sketch.calibration
         can_place = calibration is not None and self.sketch.origin is not None
         for widget, enabled in (
+            (self._undo_button, self.history.can_undo or bool(self.calibration_points) or self._drag is not None),
+            (self._copy_button, bool(self.selected_indices)),
+            (self._paste_button, can_place and bool(self.clipboard)),
             (self._calibration_button, self.canvas.image is not None),
             (self._apply_button, len(self.calibration_points) == (4 if self._axis_method() else 2)),
             (self._vertical_entry, self._axis_method()),
             (self._origin_button, calibration is not None),
             (self._center_button, calibration is not None),
             (self._placement_button, can_place),
+            (self._numeric_tool, can_place),
             (self._export_button, bool(self.sketch.pads)),
             (self._selection_button,
              self.mode == "idle" and self._drag is None and self.selected_index is not None),
             *[(button, can_place) for button in self._draw_buttons],
+            *[(button, self.mode == "idle" and len(self.selected_indices) >= minimum)
+              for button, minimum in self._align_buttons],
         ):
             widget.state(["!disabled"] if enabled else ["disabled"])
+        self._number_entry.state(["disabled"] if len(self.selected_indices) > 1 else ["!disabled"])
+        self.selection_label.set(f"選択 {len(self.selected_indices)}個")
         self._calibration_button.configure(text="横2点＋縦2点を選ぶ" if self._axis_method() else "校正の2点を選ぶ")
         if calibration is None:
             self.calibration_label.set("未校正")
@@ -379,11 +452,14 @@ class SketcherApp:
         self._redraw()
 
     def _redraw(self) -> None:
-        drawing_new = self._drag is not None and self._drag["kind"] == "draw"
+        drawing_new = (self._drag is not None and self._drag["kind"] == "draw") or self.mode == "paste"
         self.canvas.render(self.sketch, self.calibration_points,
                            selected_index=None if drawing_new else self.selected_index,
                            preview_pad=self._preview_pad,
-                           calibration_axes=self._axis_method())
+                           calibration_axes=self._axis_method(),
+                           selected_indices=[] if drawing_new else sorted(self.selected_indices),
+                           preview_pads=self._preview_pads,
+                           new_previews=self._paste_previews, guides=self._snap_guides)
         self.zoom_label.set(f"{self.canvas.scale * 100:.0f}%")
 
     def _refresh_pad_list(self) -> None:
@@ -397,8 +473,11 @@ class SketcherApp:
             )
         if self.sketch.pads:
             self.pad_table.see(item)
-        if self.selected_index is not None and self.selected_index < len(self.sketch.pads):
-            self.pad_table.selection_set(self.pad_table.get_children()[self.selected_index])
+        children = self.pad_table.get_children()
+        if self.selected_indices:
+            self.pad_table.selection_set([children[index] for index in sorted(self.selected_indices)])
+            if self.selected_index is not None:
+                self.pad_table.focus(children[self.selected_index])
 
     def open_image(self) -> None:
         path = filedialog.askopenfilename(
@@ -424,9 +503,13 @@ class SketcherApp:
             return
 
         self.sketch = Sketch()
+        self.history.clear()
         self.selected_index = None
         self._drag = None
         self._preview_pad = None
+        self._preview_pads.clear()
+        self._paste_previews.clear()
+        self._snap_guides.clear()
         self.tool.set("select")
         self.calibration_points.clear()
         self.mode = "idle"
@@ -442,8 +525,7 @@ class SketcherApp:
         return self.calibration_method.get() == AXIS_METHOD
 
     def _calibration_mode_changed(self, _event: tk.Event | None = None) -> None:
-        self._drag = None
-        self._preview_pad = None
+        self._clear_preview()
         self.calibration_points.clear()
         self.mode = "idle"
         self.tool.set("select")
@@ -453,8 +535,7 @@ class SketcherApp:
         self._refresh()
 
     def begin_calibration(self) -> None:
-        self._drag = None
-        self._preview_pad = None
+        self._clear_preview()
         if self.selected_index is not None:
             self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self.calibration_points.clear()
@@ -467,6 +548,7 @@ class SketcherApp:
     def apply_calibration(self) -> None:
         if len(self.calibration_points) != (4 if self._axis_method() else 2):
             return
+        before = Snapshot.capture(self.sketch)
         try:
             distance = self._read_number(self.distance, "実距離")
             if self._axis_method():
@@ -483,6 +565,8 @@ class SketcherApp:
             self._message(str(error), error=True)
             return
 
+        self._record_change(before)
+
         self.calibration_points.clear()
         self.mode = "idle"
         if self.sketch.origin is None:
@@ -492,8 +576,8 @@ class SketcherApp:
         self._refresh()
 
     def begin_origin(self) -> None:
-        self._drag = None
-        self._preview_pad = None
+        self._clear_preview()
+        self.calibration_points.clear()
         if self.selected_index is not None:
             self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self.mode = "origin"
@@ -507,12 +591,17 @@ class SketcherApp:
             self._set_origin((image.width / 2, image.height / 2))
 
     def _set_origin(self, point: Point) -> None:
+        before = Snapshot.capture(self.sketch)
         try:
             self.sketch.set_origin(point)
         except ValueError as error:
             self._message(str(error), error=True)
             return
+        self._clear_preview()
+        self.calibration_points.clear()
         self.mode = "idle"
+        self.tool.set("select")
+        self._record_change(before)
         if self.selected_index is not None:
             self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self._message("原点を設定しました。パッドの寸法を入力し、配置を始めてください。")
@@ -520,14 +609,25 @@ class SketcherApp:
         self._refresh()
 
     def begin_placement(self) -> None:
+        if not self.pad_number.get() or (self.mode == "idle" and self.selected_index is not None
+                                        and self.pad_number.get() == self.sketch.pads[self.selected_index].number):
+            self.pad_number.set(self._next_pad_number())
         try:
             self._pad_at((0.0, 0.0))
         except ValueError as error:
             self._message(str(error), error=True)
+            self.tool.set(self._draw_shape if self.mode == "draw" else "select")
+            self._width_entry.focus_set()
             return
+        self.calibration_points.clear()
+        self._clear_preview()
+        self.selected_index = None
+        selection = self.pad_table.selection()
+        if selection:
+            self.pad_table.selection_remove(selection)
         self.mode = "pad"
-        self.tool.set("")
-        self._message("パッドの中心をキャンバスでクリックしてください。 Esc で配置を終了します。")
+        self.tool.set("pad")
+        self._message("入力した幅・高さ・角度・Rで、中心をクリックして連続配置できます。Escで終了します。")
         self._refresh()
 
     def _pad_at(self, coordinates: Point) -> Pad:
@@ -552,11 +652,11 @@ class SketcherApp:
     def select_tool(self) -> None:
         self.mode = "idle"
         self.tool.set("select")
-        self._drag = None
-        self._preview_pad = None
+        self.calibration_points.clear()
+        self._clear_preview()
         if self.selected_index is not None:
             self._fill_pad_fields(self.sketch.pads[self.selected_index])
-        self._message("パッドを選択してドラッグで移動、四隅のハンドルでサイズ変更できます。")
+        self._message("Ctrl+クリックで複数選択。ドラッグで移動、Shiftで水平/垂直に固定できます。")
         self._refresh()
 
     def _next_pad_number(self, after: str | None = None) -> str:
@@ -573,8 +673,8 @@ class SketcherApp:
     def begin_draw(self, shape: str) -> None:
         if self.sketch.calibration is None or self.sketch.origin is None:
             return
-        self._drag = None
-        self._preview_pad = None
+        self.calibration_points.clear()
+        self._clear_preview()
         self.selected_index = None
         selection = self.pad_table.selection()
         if selection:
@@ -605,24 +705,145 @@ class SketcherApp:
 
     def _on_table_select(self, _event: tk.Event) -> None:
         selection = self.pad_table.selection()
-        if selection and self.mode == "idle" and self._drag is None:
+        if self.mode == "idle" and self._drag is None:
             children = self.pad_table.get_children()
-            if selection[0] in children:
-                self.selected_index = children.index(selection[0])
-                self._fill_pad_fields(self.sketch.pads[self.selected_index])
+            indices = {children.index(item) for item in selection if item in children}
+            focus = self.pad_table.focus()
+            primary = children.index(focus) if focus in selection else max(indices) if indices else None
+            if indices != self.selected_indices or primary != self.selected_index:
+                self._set_selection(indices, primary)
+                if self.selected_index is not None:
+                    self._fill_pad_fields(self.sketch.pads[self.selected_index])
                 self._refresh()
+
+    def _on_table_press(self, _event: tk.Event) -> None:
+        if self.mode != "idle":
+            self.select_tool()
+
+    def _clear_preview(self) -> None:
+        self._drag = None
+        self._preview_pad = None
+        self._preview_pads.clear()
+        self._paste_previews.clear()
+        self._snap_guides.clear()
+
+    def _shortcut(self, event: tk.Event, action) -> str | None:
+        if isinstance(event.widget, (tk.Entry, ttk.Entry, ttk.Combobox, tk.Text)):
+            return None
+        action()
+        return "break"
+
+    def undo(self) -> None:
+        if self._drag is not None:
+            self._cancel_action(None)
+            return
+        if self.calibration_points:
+            self.calibration_points.pop()
+            self.mode = "calibration"
+            self._message("最後の校正点を戻しました。基準点を選び直してください。")
+            self._refresh()
+            return
+        previous = self.history.undo(Snapshot.capture(self.sketch))
+        if previous is None:
+            return
+        active_mode = self.mode
+        previous.restore(self.sketch)
+        self.selected_index = None
+        self._clear_preview()
+        calibration = self.sketch.calibration
+        if isinstance(calibration, AxisCalibration):
+            self.calibration_method.set(AXIS_METHOD)
+            self.distance.set(str(calibration.x_distance))
+            self.vertical_distance.set(str(calibration.y_distance))
+        elif calibration is not None:
+            self.calibration_method.set(UNIFORM_METHOD)
+            self.distance.set(str(calibration.distance))
+        if active_mode in ("draw", "pad", "paste") and calibration is not None and self.sketch.origin is not None:
+            self.mode = active_mode
+            self.tool.set(self._draw_shape if active_mode == "draw" else "pad" if active_mode == "pad" else "")
+            if active_mode != "paste":
+                self.pad_number.set(self._next_pad_number())
+        else:
+            self.mode = "idle"
+            self.tool.set("select")
+        self._refresh_pad_list()
+        self._refresh()
+        self._message("1操作戻しました。")
+
+    def copy_selected(self) -> None:
+        if not self.selected_indices:
+            return
+        self.clipboard = tuple(self.sketch.pads[index] for index in sorted(self.selected_indices))
+        self._message(f"{len(self.clipboard)}個のパッドをコピーしました。貼り付けで配置先の中心を選んでください。")
+        self._refresh()
+
+    def begin_paste(self) -> None:
+        if not self.clipboard or self.sketch.calibration is None or self.sketch.origin is None:
+            return
+        self.calibration_points.clear()
+        self._clear_preview()
+        self.mode = "paste"
+        self.tool.set("")
+        self._message("コピーしたパッド群の中心をクリックして貼り付けます。続けて配置でき、Escで終了します。")
+        self._refresh()
+
+    def _paste_at(self, point: Point) -> None:
+        before = Snapshot.capture(self.sketch)
+        try:
+            target = self._snap_point(point)
+            pasted = duplicate_pads(self.clipboard, self.sketch.pads, target)
+            ensure_drawable(minimum_scale(self.sketch.calibration), pasted)
+        except ValueError as error:
+            self._message(str(error), error=True)
+            return
+        first = len(self.sketch.pads)
+        self.sketch.pads.extend(pasted)
+        self._set_selection(range(first, len(self.sketch.pads)))
+        self._record_change(before)
+        self._paste_previews.clear()
+        self._snap_guides.clear()
+        self._refresh_pad_list()
+        self._refresh()
+        self._message(f"{len(pasted)}個を新しい番号で貼り付けました。続けて配置でき、Escで終了します。")
+
+    def align_selected(self, axis: str, spacing: bool = False) -> None:
+        if self.mode != "idle":
+            return
+        before = Snapshot.capture(self.sketch)
+        try:
+            operation = distribute_centers if spacing else align_centers
+            pads = operation(self.sketch.pads, sorted(self.selected_indices), axis)
+            ensure_drawable(minimum_scale(self.sketch.calibration), pads)
+        except ValueError as error:
+            self._message(str(error), error=True)
+            return
+        self.sketch.pads[:] = pads
+        self._record_change(before)
+        if self.selected_index is not None:
+            self._fill_pad_fields(self.sketch.pads[self.selected_index])
+        self._refresh_pad_list()
+        self._refresh()
+        self._message("両端を固定して中心を等間隔に配置しました。" if spacing else "選択したパッドの平均中心線に揃えました。")
 
     def apply_selected(self) -> None:
         if self.mode != "idle" or self._drag is not None or self.selected_index is None:
             return
         original = self.sketch.pads[self.selected_index]
+        before = Snapshot.capture(self.sketch)
         try:
             candidate = self._pad_at((original.x, original.y))
-            ensure_drawable(minimum_scale(self.sketch.calibration), [candidate])
+            replacements = {index: (candidate if len(self.selected_indices) == 1 else
+                            replace(self.sketch.pads[index], width=candidate.width, height=candidate.height,
+                                    angle=candidate.angle, radius=candidate.radius))
+                            for index in self.selected_indices}
+            ensure_drawable(minimum_scale(self.sketch.calibration), list(replacements.values()))
         except ValueError as error:
             self._message(str(error), error=True)
             return
-        self.sketch.pads[self.selected_index] = candidate
+        for index, pad in replacements.items():
+            self.sketch.pads[index] = pad
+        self._record_change(before)
+        self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self._refresh_pad_list()
         self._refresh()
         self._message(f"パッド {candidate.number} の寸法・属性を更新しました。")
@@ -631,37 +852,114 @@ class SketcherApp:
         return self.sketch.image_to_mm(self.canvas.canvas_to_image((event.x, event.y)))
 
     def _on_canvas_press(self, event: tk.Event) -> None:
+        self.canvas.focus_set()
         if self.mode in ("calibration", "origin", "pad"):
             self._on_canvas_click(event)
             return
         if self.sketch.calibration is None or self.sketch.origin is None:
             return
         point = self._event_mm(event)
+        if self.mode == "paste":
+            self._paste_at(point)
+            return
         if self.mode == "draw":
             self._drag = {"kind": "draw", "start": point, "screen_start": (event.x, event.y)}
             return
-        if self.selected_index is not None:
+        if self.calibration_points:
+            self._message("校正の実距離を入力して適用するか、選択ツールで校正点の選択を終了してください。")
+            return
+        hit = next((i for i in range(len(self.sketch.pads) - 1, -1, -1)
+                    if hit_pad(self.sketch.pads[i], point)), None)
+        if event.state & 0x0004:
+            chosen = set(self.selected_indices)
+            if hit is not None:
+                if hit in chosen:
+                    chosen.remove(hit)
+                else:
+                    chosen.add(hit)
+            self._set_selection(chosen, hit)
+            if self.selected_index is not None:
+                self._fill_pad_fields(self.sketch.pads[self.selected_index])
+            self._refresh_pad_list()
+            self._refresh()
+            return
+        if self.selected_index is not None and len(self.selected_indices) == 1:
             pad = self.sketch.pads[self.selected_index]
             for corner, position in enumerate(pad_corners(pad)):
                 screen = self.canvas.image_to_canvas(self.sketch.mm_to_image(position))
                 if math.dist(screen, (event.x, event.y)) <= 8:
                     self._drag = {"kind": "resize", "start": point, "original": pad, "corner": corner,
+                                  "before": Snapshot.capture(self.sketch),
                                   "screen_start": (event.x, event.y)}
                     return
-        self.selected_index = next((i for i in range(len(self.sketch.pads) - 1, -1, -1)
-                                    if hit_pad(self.sketch.pads[i], point)), None)
+        self._set_selection(self.selected_indices if hit in self.selected_indices else [hit] if hit is not None else [], hit)
         if self.selected_index is not None:
             pad = self.sketch.pads[self.selected_index]
             self._fill_pad_fields(pad)
             self._drag = {"kind": "move", "start": point, "original": pad,
+                          "originals": {index: self.sketch.pads[index] for index in self.selected_indices},
+                          "before": Snapshot.capture(self.sketch),
                           "screen_start": (event.x, event.y)}
-            self._message(f"パッド {pad.number} を選択しました。ドラッグで移動、四隅でサイズ変更できます。")
+            self._message(f"{len(self.selected_indices)}個を選択。Ctrl+クリックで追加、Shift+ドラッグで水平/垂直移動できます。")
         else:
             self._drag = None
             selection = self.pad_table.selection()
             if selection:
                 self.pad_table.selection_remove(selection)
+        self._refresh_pad_list()
         self._refresh()
+
+    def _snap_point(self, point: Point, *, exclude=(), axes=("x", "y")) -> Point:
+        self._snap_guides.clear()
+        if not self.center_snap.get():
+            return point
+        excluded = set(exclude)
+        references = [pad for index, pad in enumerate(self.sketch.pads) if index not in excluded]
+        if not references:
+            return point
+        screen = self.canvas.image_to_canvas(self.sketch.mm_to_image(point))
+        result = list(point)
+        for axis in axes:
+            coordinate = 0 if axis == "x" else 1
+            nearest = min(references, key=lambda pad: abs(
+                self.canvas.image_to_canvas(self.sketch.mm_to_image((pad.x, pad.y)))[coordinate] - screen[coordinate]))
+            target_screen = self.canvas.image_to_canvas(self.sketch.mm_to_image((nearest.x, nearest.y)))[coordinate]
+            if abs(target_screen - screen[coordinate]) <= 8:
+                result[coordinate] = getattr(nearest, axis)
+                self._snap_guides.append((axis, result[coordinate]))
+        return result[0], result[1]
+
+    def _move_candidates(self, point: Point, state: int = 0) -> dict[int, Pad]:
+        drag = self._drag
+        assert drag is not None
+        dx, dy = point[0] - drag["start"][0], point[1] - drag["start"][1]
+        axes = ("x", "y")
+        locked = None
+        if state & 0x0001:
+            start_screen = self.canvas.image_to_canvas(self.sketch.mm_to_image(drag["start"]))
+            end_screen = self.canvas.image_to_canvas(self.sketch.mm_to_image(point))
+            if abs(end_screen[0] - start_screen[0]) >= abs(end_screen[1] - start_screen[1]):
+                dy, axes, locked = 0.0, ("x",), ("y", drag["original"].y)
+            else:
+                dx, axes, locked = 0.0, ("y",), ("x", drag["original"].x)
+        original = drag["original"]
+        center = self._snap_point((original.x + dx, original.y + dy), exclude=drag["originals"], axes=axes)
+        if locked is not None:
+            self._snap_guides.append(locked)
+        dx, dy = center[0] - original.x, center[1] - original.y
+        return {index: replace(pad, x=pad.x + dx, y=pad.y + dy) for index, pad in drag["originals"].items()}
+
+    def _on_canvas_motion(self, event: tk.Event) -> None:
+        if self.mode not in ("pad", "paste") or self._drag is not None:
+            return
+        try:
+            target = self._snap_point(self._event_mm(event))
+            self._paste_previews = (duplicate_pads(self.clipboard, self.sketch.pads, target)
+                                    if self.mode == "paste" else [self._pad_at(target)])
+            ensure_drawable(minimum_scale(self.sketch.calibration), self._paste_previews)
+        except ValueError:
+            self._paste_previews.clear()
+        self._redraw()
 
     def _drag_candidate(self, point: Point) -> Pad:
         drag = self._drag
@@ -691,25 +989,37 @@ class SketcherApp:
         if self._drag is None:
             return
         try:
-            candidate = self._drag_candidate(self._event_mm(event))
-            ensure_drawable(minimum_scale(self.sketch.calibration), [candidate])
+            if self._drag["kind"] == "move":
+                self._preview_pads = self._move_candidates(self._event_mm(event), event.state)
+                candidate = self._preview_pads[self.selected_index]
+            else:
+                candidate = self._drag_candidate(self._event_mm(event))
+            ensure_drawable(minimum_scale(self.sketch.calibration), list(self._preview_pads.values()) or [candidate])
             self._preview_pad = candidate
         except ValueError:
             self._preview_pad = None
+            self._preview_pads.clear()
         self._redraw()
 
     def _on_canvas_release(self, event: tk.Event) -> None:
         if self._drag is None:
             return
         drag = self._drag
+        before = drag.get("before", Snapshot.capture(self.sketch))
+        replacements = None
         try:
             if drag["kind"] == "draw" and math.dist((event.x, event.y), drag["screen_start"]) < 3:
                 raise ValueError("対角にドラッグしてパッドの幅と高さを指定してください。")
             if drag["kind"] != "draw" and (event.x, event.y) == drag["screen_start"]:
                 candidate = drag["original"]
+                if drag["kind"] == "move":
+                    replacements = drag["originals"]
+            elif drag["kind"] == "move":
+                replacements = self._move_candidates(self._event_mm(event), event.state)
+                candidate = replacements[self.selected_index]
             else:
                 candidate = self._drag_candidate(self._event_mm(event))
-            ensure_drawable(minimum_scale(self.sketch.calibration), [candidate])
+            ensure_drawable(minimum_scale(self.sketch.calibration), list(replacements.values()) if replacements else [candidate])
         except ValueError as error:
             self._message(str(error), error=True)
         else:
@@ -726,7 +1036,8 @@ class SketcherApp:
                     " Esc で選択/移動へ戻ります。"
                 )
             else:
-                self.sketch.pads[self.selected_index] = candidate
+                for index, pad in (replacements or {self.selected_index: candidate}).items():
+                    self.sketch.pads[index] = pad
                 self.mode = "idle"
                 self.tool.set("select")
                 self._fill_pad_fields(candidate)
@@ -734,9 +1045,9 @@ class SketcherApp:
                     self._message(f"パッド {candidate.number} を選択しました。四隅でサイズ変更できます。")
                 else:
                     self._message(f"パッド {candidate.number} を更新しました。寸法とRは右の欄で確認できます。")
+            self._record_change(before)
         finally:
-            self._drag = None
-            self._preview_pad = None
+            self._clear_preview()
             self._refresh_pad_list()
             self._refresh()
 
@@ -780,26 +1091,28 @@ class SketcherApp:
         self._refresh()
 
     def _place_pad(self, point: Point) -> None:
+        before = Snapshot.capture(self.sketch)
         try:
-            pad = self._pad_at(self.sketch.image_to_mm(point))
+            pad = self._pad_at(self._snap_point(self.sketch.image_to_mm(point)))
             calibration = self.sketch.calibration
             assert calibration is not None
             ensure_drawable(minimum_scale(calibration), [pad])
             self.sketch.add_pad(pad)
-            self.selected_index = None
+            self.selected_index = len(self.sketch.pads) - 1
         except ValueError as error:
             self._message(str(error), error=True)
             return
-        self.pad_number.set("")
-        self._number_entry.focus_set()
-        self._message(f"パッド {pad.number} を配置しました。続けて配置する場合は次の番号を入力してください。")
+        self._record_change(before)
+        self.pad_number.set(self._next_pad_number(pad.number))
+        self._paste_previews.clear()
+        self._snap_guides.clear()
+        self._message(f"パッド {pad.number} を数値サイズで配置しました。続けて中心をクリックできます。")
         self._refresh_pad_list()
         self._refresh()
 
     def _cancel_action(self, _event: tk.Event) -> None:
         if self.mode != "idle" or self.calibration_points or self._drag:
-            self._drag = None
-            self._preview_pad = None
+            self._clear_preview()
             self.tool.set("select")
             self.mode = "idle"
             self.calibration_points.clear()
