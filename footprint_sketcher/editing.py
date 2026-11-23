@@ -114,6 +114,49 @@ def duplicate_pads(
     return result
 
 
+def mirrored_copies(
+    pads: Iterable[Pad], existing_pads: Iterable[Pad], axis: Literal["x", "y"]
+) -> list[Pad]:
+    """Copy pads across the origin's X or Y axis, assigning unused numbers.
+
+    Reflection retains front-layer semantics. Compound outlines and original
+    Paste apertures are reflected in local Y as well as changing their pose;
+    vertex order and curved-edge indices therefore stay paired.
+    """
+    from .compound import CustomPad
+
+    axis = _checked_axis(axis)
+    sources = tuple(pads)
+    if not sources:
+        raise ValueError("反転コピーするパッドを選択してください。")
+    used = {pad.number for pad in existing_pads}
+    next_number = 1
+    result = []
+    for pad in sources:
+        while str(next_number) in used:
+            next_number += 1
+        number = str(next_number)
+        used.add(number)
+        next_number += 1
+        angle = pad.angle % 360
+        changes = {
+            "number": number,
+            "x": pad.x if axis == "x" else -pad.x,
+            "y": -pad.y if axis == "x" else pad.y,
+            "angle": (-angle if axis == "x" else 180 - angle) % 360,
+        }
+        if isinstance(pad, CustomPad):
+            changes.update(
+                outline=tuple((x, -y) for x, y in pad.outline),
+                corners=tuple((x, -y) for x, y in pad.corners),
+                paste_shapes=tuple(replace(aperture, y=-aperture.y,
+                                           angle=(-(aperture.angle % 360)) % 360)
+                                   for aperture in pad.paste_shapes),
+            )
+        result.append(replace(pad, **changes))
+    return result
+
+
 def align_centers(
     pads: Sequence[Pad],
     indices: Iterable[int],

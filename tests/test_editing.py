@@ -4,8 +4,14 @@ from dataclasses import FrozenInstanceError, asdict, replace
 import math
 import unittest
 
+from shapely import Polygon
+from shapely.affinity import scale
+
+from footprint_sketcher.compound import (
+    CustomPad, fillet_pad, local_to_world, merge_pads, world_outline, world_paste_shapes,
+)
 from footprint_sketcher.editing import (
-    Snapshot, UndoHistory, align_centers, distribute_centers, duplicate_pads,
+    Snapshot, UndoHistory, align_centers, distribute_centers, duplicate_pads, mirrored_copies,
 )
 from footprint_sketcher.model import AxisCalibration, Calibration, Pad, Sketch
 
@@ -187,6 +193,136 @@ class GroupEditingTests(unittest.TestCase):
             with self.subTest(operation=operation), self.assertRaises(ValueError):
                 operation()
             self.assertEqual([asdict(pad) for pad in pads], before)
+
+
+class MirroredCopyTests(unittest.TestCase):
+    def reflect_point(self, point, axis):
+        x, y = point
+        return (x, -y) if axis == "x" else (-x, y)
+
+    def assert_reflected_geometry(self, source, reflected, axis):
+        original_polygon = Polygon(world_outline(source))
+        expected = scale(original_polygon, xfact=1 if axis == "x" else -1,
+                         yfact=-1 if axis == "x" else 1, origin=(0, 0))
+        actual = Polygon(world_outline(reflected))
+        self.assertLess(actual.hausdorff_distance(expected), 1e-10)
+        self.assertLess(actual.symmetric_difference(expected).area, 1e-10)
+
+    def make_custom(self):
+        # A concave union with convex/concave fillets and a rotated roundrect
+        # aperture inside its copper, so reflected Paste poses are exercised.
+        pad = merge_pads((Pad("1", 0, 0, 4, 1), Pad("2", -1.5, 1, 3, 1, 90),
+                          Pad("3", -1.5, 1, 0.4, 0.8, 35, 0.1)), "7")
+        for target in ((2, -0.5), (-1, 0.5)):
+            index = min(range(len(pad.corners)), key=lambda i: math.dist(
+                local_to_world(pad, pad.corners[i]), target))
+            self.assertLess(math.dist(local_to_world(pad, pad.corners[index]), target), 1e-9)
+            pad = fillet_pad(pad, index, 0.2)
+        return replace(pad, x=4, y=-6, angle=37)
+
+    def test_both_origin_axes_reflect_rotated_rectangles_and_roundrects(self):
+        sources = (Pad("8", 3, -4, 2, 1, 30), Pad("9", -7, 2, 1.6, 1.2, -65, 0.25))
+        existing = [Pad(number, 0, 0, 1, 1) for number in ("1", "2", "4", "A")]
+        original = tuple(asdict(pad) for pad in sources)
+        original_existing = [asdict(pad) for pad in existing]
+        for axis in ("x", "y"):
+            with self.subTest(axis=axis):
+                reflected = mirrored_copies(iter(sources), iter(existing), axis)
+                self.assertEqual([pad.number for pad in reflected], ["3", "5"])
+                for source, result in zip(sources, reflected):
+                    self.assertIsNot(source, result)
+                    self.assertEqual((result.x, result.y), self.reflect_point((source.x, source.y), axis))
+                    self.assertEqual(result.angle, (-source.angle if axis == "x" else 180 - source.angle) % 360)
+                    self.assertEqual((result.width, result.height, result.radius),
+                                     (source.width, source.height, source.radius))
+                    self.assert_reflected_geometry(source, result, axis)
+        self.assertEqual(tuple(asdict(pad) for pad in sources), original)
+        self.assertEqual([asdict(pad) for pad in existing], original_existing)
+
+    def test_compound_reflection_preserves_fillet_edges_and_original_paste_openings(self):
+        source = self.make_custom()
+        original = asdict(source)
+        self.assertTrue(source.curve_edges)
+        self.assertEqual(len(source.corners), 4)
+        for axis in ("x", "y"):
+            with self.subTest(axis=axis):
+                result = mirrored_copies((source,), (source,), axis)[0]
+                self.assertIsInstance(result, CustomPad)
+                self.assertEqual(result.number, "1")
+                self.assertEqual(result.outline, tuple((x, -y) for x, y in source.outline))
+                self.assertEqual(result.corners, tuple((x, -y) for x, y in source.corners))
+                for name in ("curve_edges", "anchor_size", "width", "height", "radius",
+                             "approximation_tolerance_mm"):
+                    self.assertEqual(getattr(result, name), getattr(source, name))
+                self.assert_reflected_geometry(source, result, axis)
+                for before, after in zip(world_outline(source), world_outline(result)):
+                    self.assertLess(math.dist(after, self.reflect_point(before, axis)), 1e-10)
+                original_paste, reflected_paste = world_paste_shapes(source), world_paste_shapes(result)
+                self.assertEqual(len(original_paste), len(reflected_paste))
+                for before, after in zip(original_paste, reflected_paste):
+                    self.assertEqual((after.number, after.width, after.height, after.radius),
+                                     (before.number, before.width, before.height, before.radius))
+                    self.assertLess(math.dist((after.x, after.y), self.reflect_point((before.x, before.y), axis)), 1e-10)
+                    expected_angle = (-before.angle if axis == "x" else 180 - before.angle) % 360
+                    self.assertAlmostEqual(after.angle % 360, expected_angle, places=10)
+                    self.assert_reflected_geometry(before, after, axis)
+        self.assertEqual(asdict(source), original)
+
+    def test_reflected_compound_keeps_selected_corner_fillet_usable(self):
+        source = self.make_custom()
+        for axis in ("x", "y"):
+            with self.subTest(axis=axis):
+                reflected = mirrored_copies((source,), (), axis)[0]
+                before = asdict(reflected)
+                rounded = fillet_pad(reflected, 0, 0.05)
+                self.assertEqual(len(rounded.corners), len(reflected.corners) - 1)
+                self.assertEqual(asdict(reflected), before)
+                for before_paste, after_paste in zip(world_paste_shapes(reflected), world_paste_shapes(rounded)):
+                    self.assertLess(math.dist((before_paste.x, before_paste.y),
+                                              (after_paste.x, after_paste.y)), 1e-10)
+                    self.assertAlmostEqual(before_paste.angle, after_paste.angle, places=10)
+
+    def test_mixed_group_numbers_are_unique_and_doubled_reflection_restores_geometry(self):
+        sources = (self.make_custom(), Pad("7", -3, -4, 1.5, 0.6, 1e100, 0.1))
+        existing = sources + (Pad("1", 0, 0, 1, 1), Pad("3", 0, 0, 1, 1))
+        for axis in ("x", "y"):
+            with self.subTest(axis=axis):
+                first = mirrored_copies(sources, existing, axis)
+                self.assertEqual([pad.number for pad in first], ["2", "4"])
+                self.assertTrue(set(pad.number for pad in first).isdisjoint(pad.number for pad in existing))
+                expected_angle = (-(sources[1].angle % 360) if axis == "x"
+                                  else 180 - sources[1].angle % 360) % 360
+                self.assertEqual(first[1].angle, expected_angle)
+                second = mirrored_copies(first, existing + tuple(first), axis)
+                for original, restored in zip(sources, second):
+                    self.assertEqual((restored.x, restored.y), (original.x, original.y))
+                    self.assertEqual(restored.angle, original.angle % 360)
+                    original_polygon, restored_polygon = Polygon(world_outline(original)), Polygon(world_outline(restored))
+                    self.assertLess(original_polygon.hausdorff_distance(restored_polygon), 1e-10)
+                    if isinstance(original, CustomPad):
+                        for name in ("outline", "corners", "curve_edges", "paste_shapes", "anchor_size"):
+                            self.assertEqual(getattr(restored, name), getattr(original, name))
+
+    def test_invalid_axis_empty_and_nonfinite_sources_are_atomic(self):
+        source = Pad("1", 2, 3, 1.6, 1.2, 30, 0.25)
+        existing = [source]
+        before = asdict(source)
+        for axis in ("z", "X", "", None):
+            with self.subTest(axis=axis), self.assertRaises(ValueError):
+                mirrored_copies((source,), existing, axis)
+        with self.assertRaises(ValueError):
+            mirrored_copies((), existing, "x")
+        # Simulate invalid imported state; replace validates every returned Pad
+        # before the group is handed to the caller for a single atomic append.
+        for name in ("x", "y", "angle", "width", "height", "radius"):
+            for value in (math.nan, math.inf):
+                invalid = replace(source)
+                object.__setattr__(invalid, name, value)
+                for axis in ("x", "y"):
+                    with self.subTest(name=name, value=value, axis=axis), self.assertRaises(ValueError):
+                        mirrored_copies((source, invalid), existing, axis)
+        self.assertEqual(asdict(source), before)
+        self.assertEqual(existing, [source])
 
 
 if __name__ == "__main__":
