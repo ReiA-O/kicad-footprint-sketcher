@@ -1,0 +1,13 @@
+{
+  "pid": 52944,
+  "commit": "28d832149979f0431c42054474bb4b01aa5c1946",
+  "title": "KiCad Footprint Sketcher - 自己レビュー修正版・操作デモ",
+  "mapped": true,
+  "canvas": [
+    1229,
+    614
+  ],
+  "logical_entities": 8,
+  "constraints": 2,
+  "project": "D:\\CodexWork\\tasks\\kicad-stage1-validation-20261123\\Requirements_Demo.kfsproj"
+}
