@@ -13,7 +13,7 @@ from PIL import Image
 
 from .canvas import SketchCanvas, pad_outline
 from .interaction import hit_pad, pad_corners, resize_pad
-from .model import PAD_LAYERS, Calibration, Pad, Point, Sketch, export_footprint
+from .model import PAD_LAYERS, AxisCalibration, Calibration, Pad, Point, Sketch, export_footprint
 
 
 SURFACE = "#ffffff"
@@ -26,6 +26,12 @@ BLUE = "#234f9a"
 ERROR = "#9b3324"
 
 Mode = Literal["idle", "calibration", "origin", "pad", "draw"]
+AXIS_METHOD = "横2点＋縦2点（標準）"
+UNIFORM_METHOD = "2点・共通縮尺（補助）"
+
+
+def minimum_scale(calibration: Calibration | AxisCalibration) -> float:
+    return min(calibration.mm_per_pixel_x, calibration.mm_per_pixel_y)
 
 
 def display_number(value: float) -> str:
@@ -58,6 +64,8 @@ class SketcherApp:
 
         self.image_name = tk.StringVar(root, "下絵未選択")
         self.distance = tk.StringVar(root)
+        self.vertical_distance = tk.StringVar(root)
+        self.calibration_method = tk.StringVar(root, AXIS_METHOD)
         self.calibration_label = tk.StringVar(root, "未校正")
         self.pad_number = tk.StringVar(root)
         self.pad_width = tk.StringVar(root)
@@ -283,35 +291,41 @@ class SketcherApp:
             row=0, column=0, columnspan=2, sticky="ew"
         )
         self._section(panel, "校正と原点", 1)
+        self._method_combo = ttk.Combobox(panel, textvariable=self.calibration_method,
+                                         values=(AXIS_METHOD, UNIFORM_METHOD), state="readonly", width=24)
+        self._method_combo.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0, 5))
+        self._method_combo.bind("<<ComboboxSelected>>", self._calibration_mode_changed)
         self._calibration_button = ttk.Button(
-            panel, text="校正の2点を選ぶ", command=self.begin_calibration
+            panel, text="横2点＋縦2点を選ぶ", command=self.begin_calibration
         )
-        self._calibration_button.grid(row=3, column=0, columnspan=2, sticky="ew")
-        self._distance_entry = self._field(panel, "実距離 (mm)", self.distance, 4, 0)
+        self._calibration_button.grid(row=4, column=0, columnspan=2, sticky="ew")
+        self._distance_entry = self._field(panel, "横／共通の実距離 (mm)", self.distance, 5, 0)
+        self._vertical_entry = self._field(panel, "縦の実距離 (mm)", self.vertical_distance, 5, 1)
         self._distance_entry.bind("<Return>", lambda _event: self.apply_calibration())
+        self._vertical_entry.bind("<Return>", lambda _event: self.apply_calibration())
         self._apply_button = ttk.Button(panel, text="校正を適用", command=self.apply_calibration)
-        self._apply_button.grid(row=5, column=1, sticky="ew", padx=(3, 0))
+        self._apply_button.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(5, 0))
         ttk.Label(panel, textvariable=self.calibration_label, style="Hint.TLabel").grid(
-            row=6, column=0, columnspan=2, sticky="w", pady=(5, 5)
+            row=8, column=0, columnspan=2, sticky="w", pady=(5, 5)
         )
         self._origin_button = ttk.Button(panel, text="原点を選ぶ", command=self.begin_origin)
         self._center_button = ttk.Button(panel, text="画像の中央を原点に", command=self.center_origin)
-        self._origin_button.grid(row=7, column=0, sticky="ew", padx=(0, 3))
-        self._center_button.grid(row=7, column=1, sticky="ew", padx=(3, 0))
+        self._origin_button.grid(row=9, column=0, sticky="ew", padx=(0, 3))
+        self._center_button.grid(row=9, column=1, sticky="ew", padx=(3, 0))
 
-        self._section(panel, "表面SMDパッド", 8)
+        self._section(panel, "表面SMDパッド", 10)
         ttk.Label(panel, text=" / ".join(PAD_LAYERS), style="Hint.TLabel").grid(
-            row=10, column=0, columnspan=2, sticky="w"
+            row=12, column=0, columnspan=2, sticky="w"
         )
-        self._field(panel, "幅 (mm)", self.pad_width, 11, 0)
-        self._field(panel, "高さ (mm)", self.pad_height, 11, 1)
-        self._field(panel, "角度 (°・反時計回り)", self.pad_angle, 13, 0)
-        self._field(panel, "角のR (mm)", self.pad_radius, 13, 1)
-        self._number_entry = self._field(panel, "パッド番号", self.pad_number, 15, 0)
+        self._field(panel, "幅 (mm)", self.pad_width, 13, 0)
+        self._field(panel, "高さ (mm)", self.pad_height, 13, 1)
+        self._field(panel, "角度 (°・反時計回り)", self.pad_angle, 15, 0)
+        self._field(panel, "角のR (mm)", self.pad_radius, 15, 1)
+        self._number_entry = self._field(panel, "パッド番号", self.pad_number, 17, 0)
         self._placement_button = ttk.Button(panel, text="パッドを配置", command=self.begin_placement)
-        self._placement_button.grid(row=16, column=1, sticky="ew", padx=(3, 0))
+        self._placement_button.grid(row=18, column=1, sticky="ew", padx=(3, 0))
         self._selection_button = ttk.Button(panel, text="選択パッドに適用", command=self.apply_selected)
-        self._selection_button.grid(row=17, column=0, columnspan=2, sticky="ew", pady=(7, 0))
+        self._selection_button.grid(row=19, column=0, columnspan=2, sticky="ew", pady=(7, 0))
 
     @staticmethod
     def _section(panel: ttk.Frame, title: str, row: int) -> None:
@@ -342,25 +356,34 @@ class SketcherApp:
         can_place = calibration is not None and self.sketch.origin is not None
         for widget, enabled in (
             (self._calibration_button, self.canvas.image is not None),
-            (self._apply_button, len(self.calibration_points) == 2),
+            (self._apply_button, len(self.calibration_points) == (4 if self._axis_method() else 2)),
+            (self._vertical_entry, self._axis_method()),
             (self._origin_button, calibration is not None),
             (self._center_button, calibration is not None),
             (self._placement_button, can_place),
             (self._export_button, bool(self.sketch.pads)),
-            (self._selection_button, self.selected_index is not None),
+            (self._selection_button,
+             self.mode == "idle" and self._drag is None and self.selected_index is not None),
             *[(button, can_place) for button in self._draw_buttons],
         ):
             widget.state(["!disabled"] if enabled else ["disabled"])
-        self.calibration_label.set(
-            "未校正" if calibration is None else
-            f"{display_number(calibration.mm_per_pixel)} mm/px  ・  {display_number(calibration.distance)} mm"
-        )
+        self._calibration_button.configure(text="横2点＋縦2点を選ぶ" if self._axis_method() else "校正の2点を選ぶ")
+        if calibration is None:
+            self.calibration_label.set("未校正")
+        elif isinstance(calibration, AxisCalibration):
+            self.calibration_label.set(f"X: {display_number(calibration.mm_per_pixel_x)} mm/px  ・  {display_number(calibration.x_distance)} mm\n"
+                                       f"Y: {display_number(calibration.mm_per_pixel_y)} mm/px  ・  {display_number(calibration.y_distance)} mm")
+        else:
+            self.calibration_label.set(f"{display_number(calibration.mm_per_pixel)} mm/px  ・  {display_number(calibration.distance)} mm")
         self.canvas.configure(cursor="crosshair" if self.mode != "idle" else "arrow")
         self._redraw()
 
     def _redraw(self) -> None:
+        drawing_new = self._drag is not None and self._drag["kind"] == "draw"
         self.canvas.render(self.sketch, self.calibration_points,
-                           selected_index=self.selected_index, preview_pad=self._preview_pad)
+                           selected_index=None if drawing_new else self.selected_index,
+                           preview_pad=self._preview_pad,
+                           calibration_axes=self._axis_method())
         self.zoom_label.set(f"{self.canvas.scale * 100:.0f}%")
 
     def _refresh_pad_list(self) -> None:
@@ -408,27 +431,54 @@ class SketcherApp:
         self.calibration_points.clear()
         self.mode = "idle"
         self.distance.set("")
+        self.vertical_distance.set("")
         self.canvas.set_image(image)
         self.image_name.set(f"{path.name}  ·  {image.width} × {image.height} px")
-        self._message("下絵を表示しました。校正に使う2点を選んでください。")
+        self._message("下絵を表示しました。校正方式を選び、基準となる点を指定してください。")
         self._refresh_pad_list()
         self._refresh()
 
+    def _axis_method(self) -> bool:
+        return self.calibration_method.get() == AXIS_METHOD
+
+    def _calibration_mode_changed(self, _event: tk.Event | None = None) -> None:
+        self._drag = None
+        self._preview_pad = None
+        self.calibration_points.clear()
+        self.mode = "idle"
+        self.tool.set("select")
+        if self.selected_index is not None:
+            self._fill_pad_fields(self.sketch.pads[self.selected_index])
+        self._message("校正方式を切り替えました。新しい基準点を選んで適用してください。")
+        self._refresh()
+
     def begin_calibration(self) -> None:
+        self._drag = None
+        self._preview_pad = None
+        if self.selected_index is not None:
+            self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self.calibration_points.clear()
         self.mode = "calibration"
         self.tool.set("")
-        self._message("寸法が分かっている区間の始点 A をクリックしてください。")
+        self._message("横寸法の始点 X1 をクリックしてください。" if self._axis_method() else
+                      "寸法が分かっている区間の始点 A をクリックしてください。")
         self._refresh()
 
     def apply_calibration(self) -> None:
-        if len(self.calibration_points) != 2:
+        if len(self.calibration_points) != (4 if self._axis_method() else 2):
             return
         try:
             distance = self._read_number(self.distance, "実距離")
-            candidate = Calibration(*self.calibration_points, distance)
-            ensure_drawable(candidate.mm_per_pixel, self.sketch.pads)
-            self.sketch.set_calibration(*self.calibration_points, distance)
+            if self._axis_method():
+                vertical = self._read_number(self.vertical_distance, "縦の実距離")
+                a, b, c, d = self.calibration_points
+                candidate = AxisCalibration(a, b, distance, c, d, vertical)
+                ensure_drawable(minimum_scale(candidate), self.sketch.pads)
+                self.sketch.set_axis_calibration(a, b, distance, c, d, vertical)
+            else:
+                candidate = Calibration(*self.calibration_points, distance)
+                ensure_drawable(minimum_scale(candidate), self.sketch.pads)
+                self.sketch.set_calibration(*self.calibration_points, distance)
         except ValueError as error:
             self._message(str(error), error=True)
             return
@@ -442,6 +492,10 @@ class SketcherApp:
         self._refresh()
 
     def begin_origin(self) -> None:
+        self._drag = None
+        self._preview_pad = None
+        if self.selected_index is not None:
+            self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self.mode = "origin"
         self.tool.set("")
         self._message("原点にする位置をキャンバスでクリックしてください。")
@@ -459,6 +513,8 @@ class SketcherApp:
             self._message(str(error), error=True)
             return
         self.mode = "idle"
+        if self.selected_index is not None:
+            self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self._message("原点を設定しました。パッドの寸法を入力し、配置を始めてください。")
         self._refresh_pad_list()
         self._refresh()
@@ -498,8 +554,21 @@ class SketcherApp:
         self.tool.set("select")
         self._drag = None
         self._preview_pad = None
+        if self.selected_index is not None:
+            self._fill_pad_fields(self.sketch.pads[self.selected_index])
         self._message("パッドを選択してドラッグで移動、四隅のハンドルでサイズ変更できます。")
         self._refresh()
+
+    def _next_pad_number(self, after: str | None = None) -> str:
+        used = {pad.number for pad in self.sketch.pads}
+        try:
+            number = int(after) + 1 if after is not None and after.isdecimal() else 1
+        except ValueError:
+            # Very long numeric identifiers can exceed Python's int limit.
+            number = 1
+        while str(number) in used:
+            number += 1
+        return str(number)
 
     def begin_draw(self, shape: str) -> None:
         if self.sketch.calibration is None or self.sketch.origin is None:
@@ -513,11 +582,8 @@ class SketcherApp:
         self._draw_shape = shape
         self.mode = "draw"
         self.tool.set(shape)
-        used = {pad.number for pad in self.sketch.pads}
-        number = 1
-        while str(number) in used:
-            number += 1
-        self.pad_number.set(str(number))
+        number = self._next_pad_number()
+        self.pad_number.set(number)
         self.pad_angle.set("0")
         if shape == "rect":
             self.pad_radius.set("0")
@@ -547,12 +613,12 @@ class SketcherApp:
                 self._refresh()
 
     def apply_selected(self) -> None:
-        if self.selected_index is None:
+        if self.mode != "idle" or self._drag is not None or self.selected_index is None:
             return
         original = self.sketch.pads[self.selected_index]
         try:
             candidate = self._pad_at((original.x, original.y))
-            ensure_drawable(self.sketch.calibration.mm_per_pixel, [candidate])
+            ensure_drawable(minimum_scale(self.sketch.calibration), [candidate])
         except ValueError as error:
             self._message(str(error), error=True)
             return
@@ -626,7 +692,7 @@ class SketcherApp:
             return
         try:
             candidate = self._drag_candidate(self._event_mm(event))
-            ensure_drawable(self.sketch.calibration.mm_per_pixel, [candidate])
+            ensure_drawable(minimum_scale(self.sketch.calibration), [candidate])
             self._preview_pad = candidate
         except ValueError:
             self._preview_pad = None
@@ -643,22 +709,31 @@ class SketcherApp:
                 candidate = drag["original"]
             else:
                 candidate = self._drag_candidate(self._event_mm(event))
-            ensure_drawable(self.sketch.calibration.mm_per_pixel, [candidate])
+            ensure_drawable(minimum_scale(self.sketch.calibration), [candidate])
         except ValueError as error:
             self._message(str(error), error=True)
         else:
             if drag["kind"] == "draw":
                 self.sketch.add_pad(candidate)
                 self.selected_index = len(self.sketch.pads) - 1
+                self._fill_pad_fields(candidate)
+                number = self._next_pad_number(candidate.number)
+                self.pad_number.set(number)
+                self.mode = "draw"
+                self.tool.set(self._draw_shape)
+                self._message(
+                    f"パッド {candidate.number} を配置しました。続けてパッド {number} の対角をドラッグできます。"
+                    " Esc で選択/移動へ戻ります。"
+                )
             else:
                 self.sketch.pads[self.selected_index] = candidate
-            self.mode = "idle"
-            self.tool.set("select")
-            self._fill_pad_fields(candidate)
-            if drag["kind"] != "draw" and candidate == drag["original"]:
-                self._message(f"パッド {candidate.number} を選択しました。四隅でサイズ変更できます。")
-            else:
-                self._message(f"パッド {candidate.number} を更新しました。寸法とRは右の欄で確認できます。")
+                self.mode = "idle"
+                self.tool.set("select")
+                self._fill_pad_fields(candidate)
+                if candidate == drag["original"]:
+                    self._message(f"パッド {candidate.number} を選択しました。四隅でサイズ変更できます。")
+                else:
+                    self._message(f"パッド {candidate.number} を更新しました。寸法とRは右の欄で確認できます。")
         finally:
             self._drag = None
             self._preview_pad = None
@@ -678,17 +753,28 @@ class SketcherApp:
             self._place_pad(point)
 
     def _pick_calibration_point(self, point: Point, image: Image.Image) -> None:
+        count = len(self.calibration_points)
+        if self._axis_method() and count == 1:
+            point = (point[0], self.calibration_points[0][1])
+        elif self._axis_method() and count == 3:
+            point = (self.calibration_points[2][0], point[1])
         if not (0 <= point[0] <= image.width and 0 <= point[1] <= image.height):
             self._message("校正点は下絵の内側をクリックしてください。", error=True)
             return
-        if self.calibration_points and self.calibration_points[0] == point:
-            self._message("始点と異なる終点 B をクリックしてください。", error=True)
+        if count in (1, 3) and self.calibration_points[-1] == point:
+            self._message("同じ位置では校正できません。固定された軸上の異なる終点を選んでください。", error=True)
             return
         self.calibration_points.append(point)
-        if len(self.calibration_points) == 2:
+        total = 4 if self._axis_method() else 2
+        if len(self.calibration_points) == total:
             self.mode = "idle"
             self._distance_entry.focus_set()
-            self._message("2点間の実距離を入力して「校正を適用」を押してください。")
+            self._message("横・縦それぞれの実距離をmmで入力して「校正を適用」を押してください。" if self._axis_method() else
+                          "2点間の実距離を入力して「校正を適用」を押してください。")
+        elif self._axis_method():
+            self._message({1: "横寸法の終点 X2 を選んでください。X1から水平に固定されます。",
+                           2: "縦寸法の始点 Y1 をクリックしてください。",
+                           3: "縦寸法の終点 Y2 を選んでください。Y1から垂直に固定されます。"}[len(self.calibration_points)])
         else:
             self._message("区間の終点 B をクリックしてください。")
         self._refresh()
@@ -698,7 +784,7 @@ class SketcherApp:
             pad = self._pad_at(self.sketch.image_to_mm(point))
             calibration = self.sketch.calibration
             assert calibration is not None
-            ensure_drawable(calibration.mm_per_pixel, [pad])
+            ensure_drawable(minimum_scale(calibration), [pad])
             self.sketch.add_pad(pad)
             self.selected_index = None
         except ValueError as error:
@@ -717,6 +803,8 @@ class SketcherApp:
             self.tool.set("select")
             self.mode = "idle"
             self.calibration_points.clear()
+            if self.selected_index is not None:
+                self._fill_pad_fields(self.sketch.pads[self.selected_index])
             self._message("操作を取り消しました。")
             self._refresh()
 

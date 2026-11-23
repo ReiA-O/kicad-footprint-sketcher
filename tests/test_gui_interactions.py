@@ -70,6 +70,10 @@ class GuiInteractionTests(unittest.TestCase):
         with patch("footprint_sketcher.gui.filedialog.askopenfilename", return_value=str(SAMPLE)):
             self._button("下絵を開く…")
         self.assertEqual(self.app.canvas.image.size, (900, 560))
+        self.assertEqual(self.app._method_combo.current(), 0)
+        self.app._method_combo.current(1)
+        self.app._method_combo.event_generate("<<ComboboxSelected>>", when="tail")
+        self._pump()
 
     def _destroy_root(self):
         try:
@@ -176,7 +180,11 @@ class GuiInteractionTests(unittest.TestCase):
         self.assertEqual(self.app.selected_index, before)
         self.assertIsNone(self.app._drag)
         self.assertIsNone(self.app._preview_pad)
-        self._assert_fields(self.app.sketch.pads[before])
+        self.assertEqual(self.app.mode, "draw")
+        self.assertEqual(self.app.tool.get(), "rect" if tool == "矩形パッド" else "roundrect")
+        self.assertTrue(self.app.pad_number.get().isdecimal())
+        self.assertNotIn(self.app.pad_number.get(), {pad.number for pad in self.app.sketch.pads})
+        self._assert_fields(self.app.sketch.pads[before], include_number=False)
         return self.app.sketch.pads[before], points
 
     def _state(self):
@@ -197,13 +205,229 @@ class GuiInteractionTests(unittest.TestCase):
         self.assertAlmostEqual(actual[0], expected[0], places=7)
         self.assertAlmostEqual(actual[1], expected[1], places=7)
 
-    def _assert_fields(self, pad):
-        self.assertEqual(self.app.pad_number.get(), pad.number)
+    def _assert_fields(self, pad, *, include_number=True):
+        if include_number:
+            self.assertEqual(self.app.pad_number.get(), pad.number)
         for variable, name in [
             (self.app.pad_width, "width"), (self.app.pad_height, "height"),
             (self.app.pad_angle, "angle"), (self.app.pad_radius, "radius"),
         ]:
             self.assertEqual(float(variable.get()), getattr(pad, name))
+
+    def test_drag_creation_stays_in_tool_and_advances_only_the_next_number(self):
+        self._calibrate()
+        cases = (
+            ("矩形パッド", "rect", ((-5, -3), (-3, -2)), ((-2, -3), (0, -2))),
+            ("角丸パッド", "roundrect", ((1, 1), (3, 2)), ((4, 1), (6, 2))),
+        )
+        for tool, shape, first_drag, second_drag in cases:
+            with self.subTest(shape=shape):
+                existing = tuple(self.app.sketch.pads)
+                count = len(existing)
+                self._button(tool)
+                self._entry(self.app.pad_angle, "30")
+                if shape == "roundrect":
+                    self._entry(self.app.pad_radius, "0.25")
+                self._drag_world(*first_drag)
+                first = self.app.sketch.pads[-1]
+                self.assertEqual(first.number, str(count + 1))
+                self.assertEqual(self.app.pad_number.get(), str(count + 2))
+                self.assertEqual((self.app.mode, self.app.tool.get()), ("draw", shape))
+                self.assertTrue(self.app._selection_button.instate(["disabled"]))
+                self._assert_fields(first, include_number=False)
+
+                snapshot = self._state()
+                self.app._selection_button.invoke()
+                self._pump()
+                self.app.apply_selected()
+                self._pump()
+                self.assertEqual(self._state(), snapshot)
+
+                # No tool click between the two drags: keep the shape, angle and R.
+                self._world_event("<Button-1>", second_drag[0])
+                self._world_event("<B1-Motion>", second_drag[1])
+                self.assertEqual(len(self.app.canvas.find_withtag("pad")), count + 1)
+                self.assertIsNotNone(self.app._preview_pad)
+                self._world_event("<ButtonRelease-1>", second_drag[1])
+                second = self.app.sketch.pads[-1]
+                self.assertEqual(len(self.app.sketch.pads), count + 2)
+                self.assertEqual(tuple(self.app.sketch.pads[:count]), existing)
+                self.assertEqual(self.app.sketch.pads[count], first)
+                self.assertEqual(second.number, str(count + 2))
+                self.assertEqual(self.app.pad_number.get(), str(count + 3))
+                self.assertEqual((second.angle, second.radius), (first.angle, first.radius))
+                self.assertEqual(second.radius > 0, shape == "roundrect")
+                self.assertEqual((self.app.mode, self.app.tool.get()), ("draw", shape))
+                self.assertTrue(self.app._selection_button.instate(["disabled"]))
+                self._assert_fields(second, include_number=False)
+
+                snapshot = self._state()
+                self._escape()
+                self.assertEqual((self.app.mode, self.app.tool.get()), ("idle", "select"))
+                self.assertEqual(self._state(), snapshot)
+                self.assertFalse(self.app._selection_button.instate(["disabled"]))
+                self._assert_fields(second)
+
+    def test_continuous_creation_skips_used_numbers_without_renumbering_existing_pads(self):
+        self._calibrate()
+        self._draw("矩形パッド", (-5, -3), (-3, -2))
+        self._button("選択/移動")
+        self._entry(self.app.pad_number, "3")
+        self._button("選択パッドに適用")
+        existing = self.app.sketch.pads[0]
+
+        self._draw("矩形パッド", (-2, -3), (0, -2))
+        self.assertEqual(self.app.sketch.pads[-1].number, "1")
+        self.assertEqual(self.app.pad_number.get(), "2")
+        self._drag_world((1, 1), (3, 2))
+        self.assertEqual([pad.number for pad in self.app.sketch.pads], ["3", "1", "2"])
+        self.assertEqual(self.app.pad_number.get(), "4")
+        self.assertEqual(self.app.sketch.pads[0], existing)
+        self.assertEqual((self.app.mode, self.app.tool.get()), ("draw", "rect"))
+
+        # An explicit switch restores the selected pad's number before applying.
+        last = self.app.sketch.pads[-1]
+        self._button("選択/移動")
+        self._assert_fields(last)
+        self._button("選択パッドに適用")
+        self.assertEqual([pad.number for pad in self.app.sketch.pads], ["3", "1", "2"])
+
+    def test_four_point_axis_lock_and_view_changes_preserve_anisotropic_calibration(self):
+        from footprint_sketcher.gui import AXIS_METHOD
+
+        self.app._method_combo.current(0)
+        self.app._method_combo.event_generate("<<ComboboxSelected>>", when="tail")
+        self._pump()
+        self.assertEqual(self.app.calibration_method.get(), AXIS_METHOD)
+        self._button("横2点＋縦2点を選ぶ")
+        self._entry(self.app.distance, "10")
+        self._entry(self.app.vertical_distance, "4")
+        self.assertTrue(self.app._apply_button.instate(["disabled"]))
+
+        x_a = self._click((150, 445))
+        self.assertEqual(self.app.calibration_points, [x_a])
+        self.assertTrue(self.app._apply_button.instate(["disabled"]))
+        anchor = self._screen((750, 425))
+        before_anchor = self.app.canvas.canvas_to_image(anchor)
+        self._event("<MouseWheel>", anchor, delta=120)
+        self._assert_point(self.app.canvas.canvas_to_image(anchor), before_anchor)
+        self._pan(23, -17)
+        self.assertEqual(self.app.calibration_points, [x_a])
+
+        requested_x_b = self._click((750, 425))
+        x_b = (requested_x_b[0], x_a[1])
+        self.assertNotEqual(requested_x_b[1], x_a[1])
+        self.assertEqual(self.app.calibration_points, [x_a, x_b])
+        self.assertTrue(self.app._apply_button.instate(["disabled"]))
+        y_a = self._click((300, 220))
+        self.assertEqual(self.app.calibration_points, [x_a, x_b, y_a])
+        self.assertTrue(self.app._apply_button.instate(["disabled"]))
+        requested_y_b = self._click((320, 340))
+        y_b = (y_a[0], requested_y_b[1])
+        self.assertNotEqual(requested_y_b[0], y_a[0])
+        self.assertEqual(self.app.calibration_points, [x_a, x_b, y_a, y_b])
+        self.assertFalse(self.app._apply_button.instate(["disabled"]))
+
+        self._button("校正を適用")
+        calibration = self.app.sketch.calibration
+        self.assertEqual((calibration.x_a, calibration.x_b, calibration.x_distance), (x_a, x_b, 10))
+        self.assertEqual((calibration.y_a, calibration.y_b, calibration.y_distance), (y_a, y_b, 4))
+        self.assertAlmostEqual(calibration.mm_per_pixel_x, 10 / abs(x_b[0] - x_a[0]))
+        self.assertAlmostEqual(calibration.mm_per_pixel_y, 4 / abs(y_b[1] - y_a[1]))
+        self.assertNotEqual(calibration.mm_per_pixel_x, calibration.mm_per_pixel_y)
+        self._button("画像の中央を原点に")
+        self._draw("矩形パッド", (-4, -2), (-2, 0))
+        snapshot, baseline = self._state(), self._export_bytes()
+
+        anchor = self._screen((450, 280))
+        before_anchor = self.app.canvas.canvas_to_image(anchor)
+        self._event("<MouseWheel>", anchor, delta=120)
+        self._assert_point(self.app.canvas.canvas_to_image(anchor), before_anchor)
+        self._pan(-19, 13)
+        self._button("＋")
+        self._button("−")
+        self.assertEqual(self._state(), snapshot)
+        self.assertEqual(self._export_bytes(), baseline)
+        self._button("全体表示")
+        self.assertEqual(self._state(), snapshot)
+        self.assertEqual(self._export_bytes(), baseline)
+
+    def test_anisotropic_pad_edit_handles_and_uniform_calibration_switch(self):
+        from footprint_sketcher.gui import AXIS_METHOD, UNIFORM_METHOD
+
+        self.app._method_combo.current(0)
+        self.app._method_combo.event_generate("<<ComboboxSelected>>", when="tail")
+        self._pump()
+        self.assertEqual(self.app.calibration_method.get(), AXIS_METHOD)
+        self._button("横2点＋縦2点を選ぶ")
+        self._click((150, 445))
+        self._click((750, 425))
+        self._click((300, 220))
+        self._click((320, 340))
+        self._entry(self.app.distance, "10")
+        self._entry(self.app.vertical_distance, "4")
+        self._button("校正を適用")
+        self.assertNotEqual(self.app.sketch.calibration.mm_per_pixel_x,
+                            self.app.sketch.calibration.mm_per_pixel_y)
+        self._button("画像の中央を原点に")
+        pad, _ = self._draw("角丸パッド", (-4, -2), (-2, 0), radius="0.25", angle="30")
+        self._button("選択/移動")
+        anchor = self._screen((pad.x, pad.y), world=True)
+        self._event("<MouseWheel>", anchor, delta=120)
+        self._pan(17, -9)
+
+        def assert_rendered_handles(current_pad):
+            self._pump()
+            for corner, world in enumerate(pad_corners(current_pad)):
+                items = self.app.canvas.find_withtag(f"selection-handle-{corner}")
+                self.assertEqual(len(items), 1)
+                x0, y0, x1, y1 = self.app.canvas.coords(items[0])
+                expected = self.app.canvas.image_to_canvas(self.app.sketch.mm_to_image(world))
+                self._assert_point(((x0 + x1) / 2, (y0 + y1) / 2), expected)
+
+        assert_rendered_handles(pad)
+        start, end = self._drag_world((pad.x, pad.y), (pad.x + 1, pad.y + 0.5))
+        moved = self.app.sketch.pads[0]
+        self._assert_point((moved.x, moved.y), (pad.x + end[0] - start[0], pad.y + end[1] - start[1]))
+        self.assertEqual((moved.number, moved.width, moved.height, moved.angle, moved.radius),
+                         (pad.number, pad.width, pad.height, pad.angle, pad.radius))
+        self._assert_fields(moved)
+        assert_rendered_handles(moved)
+
+        for corner in range(4):
+            with self.subTest(anisotropic_handle=corner):
+                original = self.app.sketch.pads[0]
+                corners = pad_corners(original)
+                moving, fixed = corners[corner], corners[(corner + 2) % 4]
+                target = tuple(f + 1.1 * (m - f) for m, f in zip(moving, fixed))
+                press, release = self._drag_world(moving, target)
+                resized = self.app.sketch.pads[0]
+                expected = tuple(m + b - a for m, a, b in zip(moving, press, release))
+                self._assert_point(pad_corners(resized)[corner], expected)
+                self._assert_point(pad_corners(resized)[(corner + 2) % 4], fixed)
+                self.assertEqual((resized.number, resized.angle, resized.radius),
+                                 (original.number, 30, original.radius))
+                self._assert_fields(resized)
+                assert_rendered_handles(resized)
+
+        pads, origin = tuple(self.app.sketch.pads), self.app.sketch.origin
+        baseline = self._export_bytes()
+        self._button("全体表示")
+        self.app._method_combo.current(1)
+        self.app._method_combo.event_generate("<<ComboboxSelected>>", when="tail")
+        self._pump()
+        self.assertEqual(self.app.calibration_method.get(), UNIFORM_METHOD)
+        self._button("校正の2点を選ぶ")
+        a = self._click((150, 445))
+        b = self._click((750, 425))
+        self.assertNotEqual(a[1], b[1])
+        self._entry(self.app.distance, "10")
+        self._button("校正を適用")
+        calibration = self.app.sketch.calibration
+        self.assertEqual((calibration.a, calibration.b, calibration.distance), (a, b, 10))
+        self.assertAlmostEqual(calibration.mm_per_pixel, 10 / math.dist(a, b))
+        self.assertEqual((tuple(self.app.sketch.pads), self.app.sketch.origin), (pads, origin))
+        self.assertEqual(self._export_bytes(), baseline)
 
     def test_zoom_pan_during_calibration_and_display_changes_preserve_export(self):
         self._button("校正の2点を選ぶ")
