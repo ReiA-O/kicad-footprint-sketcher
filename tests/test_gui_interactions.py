@@ -214,6 +214,214 @@ class GuiInteractionTests(unittest.TestCase):
         ]:
             self.assertEqual(float(variable.get()), getattr(pad, name))
 
+    def test_merge_fillet_attributes_move_copy_paste_and_each_undo_preserve_paste_openings(self):
+        from footprint_sketcher.compound import CustomPad, world_outline, world_paste_shapes
+
+        def select_rows(indices):
+            children = self.app.pad_table.get_children()
+            self.app.pad_table.selection_set([children[index] for index in indices])
+            self.app.pad_table.focus(children[indices[-1]])
+            self.app.pad_table.event_generate("<<TreeviewSelect>>", when="tail")
+            self._pump()
+            self.assertEqual(self.app.selected_indices, set(indices))
+            self.assertEqual(self.app.merge_number.get(), "")
+
+        def assert_apertures(actual, expected, delta=(0, 0)):
+            self.assertEqual(len(actual), len(expected))
+            for aperture, original in zip(actual, expected):
+                self._assert_point((aperture.x, aperture.y),
+                                   (original.x + delta[0], original.y + delta[1]))
+                self.assertEqual((aperture.width, aperture.height, aperture.angle % 360, aperture.radius),
+                                 (original.width, original.height, original.angle % 360, original.radius))
+
+        self._calibrate()
+        self.app.center_snap.set(False)
+        for variable, value in ((self.app.pad_width, "4"), (self.app.pad_height, "1"),
+                                (self.app.pad_angle, "0"), (self.app.pad_radius, "0")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        self._click((0, 0), world=True)
+        self._entry(self.app.pad_width, "1")
+        self._entry(self.app.pad_height, "3")
+        self._click((-1.5, 1), world=True)
+        self._button("選択/移動")
+        originals = tuple(self.app.sketch.pads)
+        baseline, baseline_payload = self._state(), self._export_bytes()
+        history = tuple(self.app.history._snapshots)
+        select_rows([0, 1])
+        self._entry(self.app.merge_number, "L1")
+        self._button("選択図形を合体")
+        self.assertEqual(len(self.app.sketch.pads), 1)
+        merged = self.app.sketch.pads[0]
+        self.assertIsInstance(merged, CustomPad)
+        self.assertEqual(merged.number, "L1")
+        self.assertEqual(len(merged.corners), 6)
+        self.assertEqual(len(merged.paste_shapes), 2)
+        assert_apertures(world_paste_shapes(merged), originals)
+        self.assertEqual(self.app.selected_indices, {0})
+        self.assertFalse(self.app.canvas.find_withtag("selection-handle"))
+        self.assertEqual(len(self.app.canvas.find_withtag("paste-opening")), 2)
+        for entry in (self.app._width_entry, self.app._height_entry, self.app._radius_entry):
+            self.assertTrue(entry.instate(["disabled"]))
+        self.assertEqual(tuple(self.app.history._snapshots)[:-1], history)
+        merged_state = self._state()
+        merged_payload = self._export_bytes()
+        self.assertEqual(merged_payload.count(b'(pad "L1" smd custom'), 1)
+        self.assertEqual(merged_payload.count(b'(pad "" smd rect'), 2)
+        self.assertEqual(merged_payload.count(b'(layers "F.Cu" "F.Mask")'), 1)
+        self.assertEqual(merged_payload.count(b'(layers "F.Paste")'), 2)
+
+        # The rightmost top corner is convex and belongs to the horizontal leg.
+        corner_index = max(range(len(merged.corners)),
+                           key=lambda index: (merged.corners[index][0], -merged.corners[index][1]))
+        chosen = merged.corners[corner_index]
+        self._entry(self.app.fillet_radius, "0.2")
+        self._button("角を選んでフィレット")
+        self.assertEqual(self.app.mode, "fillet")
+        self.assertEqual(len(self.app.canvas.find_withtag("fillet-corner")), 6)
+        screen = self.app._corner_screens(merged)[corner_index]
+        self._event("<Button-1>", screen)
+        self._event("<ButtonRelease-1>", screen)
+        filleted = self.app.sketch.pads[0]
+        self.assertIsInstance(filleted, CustomPad)
+        self.assertNotEqual(filleted.outline, merged.outline)
+        self.assertEqual(set(filleted.corners), set(merged.corners) - {chosen})
+        self.assertNotIn(chosen, filleted.outline)
+        for tangent in ((chosen[0] - 0.2, chosen[1]), (chosen[0], chosen[1] + 0.2)):
+            self._assert_point(min(filleted.outline, key=lambda point: math.dist(point, tangent)), tangent)
+        for corner in merged.corners:
+            if corner != chosen:
+                self.assertIn(corner, filleted.outline)
+        self.assertEqual(filleted.paste_shapes, merged.paste_shapes)
+        assert_apertures(world_paste_shapes(filleted), originals)
+        self.assertEqual(len(self.app.history._snapshots), len(history) + 2)
+        filleted_state = self._state()
+        fillet_history = tuple(self.app.history._snapshots)
+        self._event("<Button-3>", screen)
+        self._event("<ButtonRelease-3>", screen)
+        self.assertEqual((self.app.mode, self.app.tool.get()), ("idle", "select"))
+        self.assertFalse(self.app.canvas.find_withtag("fillet-corner"))
+        self.assertEqual(self._state(), filleted_state)
+        self.assertEqual(tuple(self.app.history._snapshots), fillet_history)
+
+        self._entry(self.app.pad_number, "M1")
+        self._entry(self.app.pad_angle, "30")
+        self._button("選択パッドに適用")
+        rotated = self.app.sketch.pads[0]
+        self.assertEqual((rotated.number, rotated.angle), ("M1", 30))
+        self.assertEqual((rotated.outline, rotated.corners, rotated.paste_shapes),
+                         (filleted.outline, filleted.corners, filleted.paste_shapes))
+        rotated_state = self._state()
+        press, release = self._drag_world((rotated.x, rotated.y), (rotated.x + 0.5, rotated.y - 0.5))
+        moved = self.app.sketch.pads[0]
+        delta = (release[0] - press[0], release[1] - press[1])
+        self._assert_point((moved.x, moved.y), (rotated.x + delta[0], rotated.y + delta[1]))
+        self.assertEqual((moved.outline, moved.corners, moved.paste_shapes, moved.angle),
+                         (rotated.outline, rotated.corners, rotated.paste_shapes, rotated.angle))
+        assert_apertures(world_paste_shapes(moved), world_paste_shapes(rotated), delta)
+        moved_state = self._state()
+        self._button("コピー")
+        copied = self.app.clipboard
+        self.assertEqual(copied, (moved,))
+        self._entry(self.app.pad_number, "M2")
+        self._entry(self.app.pad_angle, "60")
+        self._button("選択パッドに適用")
+        self.assertEqual(self.app.clipboard, copied)
+        before_paste = self._state()
+        self._button("貼り付け")
+        target = self._click((3, 1), world=True)
+        self.assertEqual(len(self.app.sketch.pads), 2)
+        pasted = self.app.sketch.pads[1]
+        self.assertIsInstance(pasted, CustomPad)
+        self.assertNotIn(pasted.number, {"M1", "M2"})
+        self._assert_point((pasted.x, pasted.y), target)
+        self.assertEqual((pasted.outline, pasted.corners, pasted.paste_shapes, pasted.angle),
+                         (moved.outline, moved.corners, moved.paste_shapes, moved.angle))
+        paste_delta = (pasted.x - moved.x, pasted.y - moved.y)
+        assert_apertures(world_paste_shapes(pasted), world_paste_shapes(moved), paste_delta)
+        self.assertEqual(len(world_outline(pasted)), len(world_outline(moved)))
+        for actual, original in zip(world_outline(pasted), world_outline(moved)):
+            self._assert_point(actual, (original[0] + paste_delta[0], original[1] + paste_delta[1]))
+        self.assertEqual(self.app.clipboard, copied)
+        self.assertEqual(len(self.app.history._snapshots), len(history) + 6)
+        for expected in (before_paste, moved_state, rotated_state, filleted_state, merged_state, baseline):
+            before_count = len(self.app.history._snapshots)
+            self._button("1操作戻す")
+            self.assertEqual(self._state(), expected)
+            self.assertEqual(len(self.app.history._snapshots), before_count - 1)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self.assertEqual(self._export_bytes(), baseline_payload)
+
+    def test_failed_nonconnected_merge_and_excessive_corner_radius_are_atomic(self):
+        from footprint_sketcher.compound import CustomPad
+
+        def select_rows(indices):
+            children = self.app.pad_table.get_children()
+            self.app.pad_table.selection_set([children[index] for index in indices])
+            self.app.pad_table.focus(children[indices[-1]])
+            self.app.pad_table.event_generate("<<TreeviewSelect>>", when="tail")
+            self._pump()
+            self.assertEqual(self.app.selected_indices, set(indices))
+
+        self._calibrate()
+        self.app.center_snap.set(False)
+        for variable, value in ((self.app.pad_width, "1"), (self.app.pad_height, "1"),
+                                (self.app.pad_angle, "0"), (self.app.pad_radius, "0")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        self._click((-2, 0), world=True)
+        self._click((2, 0), world=True)
+        self._button("選択/移動")
+        select_rows([0, 1])
+        baseline, payload = self._state(), self._export_bytes()
+        history = tuple(self.app.history._snapshots)
+        for number in ("", "NC"):
+            with self.subTest(merge_number=number):
+                self._entry(self.app.merge_number, number)
+                self._button("選択図形を合体")
+                self.assertEqual(self._state(), baseline)
+                self.assertEqual(self.app.selected_indices, {0, 1})
+                self.assertEqual(self.app.mode, "idle")
+                self.assertEqual(tuple(self.app.history._snapshots), history)
+                self.assertEqual(self._export_bytes(), payload)
+
+        self._button("数値サイズで配置")
+        self._entry(self.app.pad_width, "4")
+        self._entry(self.app.pad_height, "0.5")
+        self._click((0, 0), world=True)
+        self._button("選択/移動")
+        select_rows([0, 1, 2])
+        self._entry(self.app.merge_number, "Connected")
+        self._button("選択図形を合体")
+        self.assertEqual(len(self.app.sketch.pads), 1)
+        custom = self.app.sketch.pads[0]
+        self.assertIsInstance(custom, CustomPad)
+        self.assertFalse(self.app.canvas.find_withtag("selection-handle"))
+        for entry in (self.app._width_entry, self.app._height_entry, self.app._radius_entry):
+            self.assertTrue(entry.instate(["disabled"]))
+        self.assertFalse(self.app._number_entry.instate(["disabled"]))
+        baseline, payload = self._state(), self._export_bytes()
+        history = tuple(self.app.history._snapshots)
+        self._entry(self.app.fillet_radius, "100")
+        self._button("角を選んでフィレット")
+        corner = min(range(len(custom.corners)),
+                     key=lambda index: (custom.corners[index][0], custom.corners[index][1]))
+        screen = self.app._corner_screens(custom)[corner]
+        self._event("<Button-1>", screen)
+        self._event("<ButtonRelease-1>", screen)
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(self.app.selected_indices, {0})
+        self.assertEqual(self.app.mode, "fillet")
+        self.assertEqual(len(self.app.canvas.find_withtag("fillet-corner")), len(custom.corners))
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self.assertEqual(self._export_bytes(), payload)
+        self._escape()
+        self.assertEqual((self.app.mode, self.app.tool.get()), ("idle", "select"))
+        self.assertFalse(self.app.canvas.find_withtag("fillet-corner"))
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self.assertEqual(self._export_bytes(), payload)
+
     def test_numeric_continuous_placement_frozen_copy_and_group_paste_undo(self):
         def assert_released(snapshot, history):
             self.assertEqual((self.app.mode, self.app.tool.get()), ("idle", "select"))

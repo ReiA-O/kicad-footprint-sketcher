@@ -191,14 +191,37 @@ def _decimal(value: float) -> str:
     return format(Decimal(str(value)), "f") if value else "0"
 
 
-def _render_pad(pad: Pad) -> list[str]:
+def _render_pad(pad: Pad, *, layers: tuple[str, ...] = PAD_LAYERS, number: str | None = None) -> list[str]:
+    from .compound import CustomPad, world_paste_shapes
+
+    if isinstance(pad, CustomPad):
+        anchor_width, anchor_height = pad.anchor_size
+        lines = [
+            f"  (pad {_quoted(pad.number)} smd custom",
+            f"    (at {_decimal(pad.x)} {_decimal(pad.y)} {_decimal(pad.angle % 360)})",
+            f"    (size {_decimal(anchor_width)} {_decimal(anchor_height)})",
+            '    (layers "F.Cu" "F.Mask")',
+            '    (options (clearance outline) (anchor rect))',
+            '    (primitives',
+            '      (gr_poly',
+            '        (pts',
+            *[f"          (xy {_decimal(x)} {_decimal(y)})" for x, y in pad.outline],
+            '        )',
+            '        (width 0) (fill yes)',
+            '      )',
+            '    )',
+            '  )',
+        ]
+        for aperture in world_paste_shapes(pad):
+            lines.extend(_render_pad(aperture, layers=("F.Paste",), number=""))
+        return lines
     shape = "roundrect" if pad.radius else "rect"
-    layers = " ".join(_quoted(layer) for layer in PAD_LAYERS)
+    layer_tokens = " ".join(_quoted(layer) for layer in layers)
     lines = [
-        f"  (pad {_quoted(pad.number)} smd {shape}",
+        f"  (pad {_quoted(pad.number if number is None else number)} smd {shape}",
         f"    (at {_decimal(pad.x)} {_decimal(pad.y)} {_decimal(pad.angle % 360)})",
         f"    (size {_decimal(pad.width)} {_decimal(pad.height)})",
-        f"    (layers {layers})",
+        f"    (layers {layer_tokens})",
     ]
     if pad.radius:
         ratio = pad.radius / min(pad.width, pad.height)
