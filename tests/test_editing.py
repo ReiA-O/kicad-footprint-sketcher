@@ -5,14 +5,17 @@ import math
 import unittest
 
 from shapely import Polygon
-from shapely.affinity import scale
+from shapely.affinity import affine_transform, rotate, scale, translate
 
 from footprint_sketcher.compound import (
-    CustomPad, fillet_pad, local_to_world, merge_pads, world_outline, world_paste_shapes,
+    CustomPad, fillet_pad, local_to_world, merge_pads, world_outline, world_paste_shapes, world_paste_sources,
 )
 from footprint_sketcher.editing import (
-    Snapshot, UndoHistory, align_centers, distribute_centers, duplicate_pads, mirrored_copies,
+    Snapshot, UndoHistory, align_centers, copy_pads_between_points, delete_selected_pads,
+    distribute_centers, duplicate_pads, line_symmetric_copies, mirrored_copies,
+    point_symmetric_copies,
 )
+from footprint_sketcher.graphics import Graphic, arc_points, world_vertices
 from footprint_sketcher.model import AxisCalibration, Calibration, Pad, Sketch
 
 
@@ -195,7 +198,7 @@ class GroupEditingTests(unittest.TestCase):
             self.assertEqual([asdict(pad) for pad in pads], before)
 
 
-class MirroredCopyTests(unittest.TestCase):
+class _CompoundFixture:
     def reflect_point(self, point, axis):
         x, y = point
         return (x, -y) if axis == "x" else (-x, y)
@@ -220,6 +223,8 @@ class MirroredCopyTests(unittest.TestCase):
             pad = fillet_pad(pad, index, 0.2)
         return replace(pad, x=4, y=-6, angle=37)
 
+
+class MirroredCopyTests(_CompoundFixture, unittest.TestCase):
     def test_both_origin_axes_reflect_rotated_rectangles_and_roundrects(self):
         sources = (Pad("8", 3, -4, 2, 1, 30), Pad("9", -7, 2, 1.6, 1.2, -65, 0.25))
         existing = [Pad(number, 0, 0, 1, 1) for number in ("1", "2", "4", "A")]
@@ -323,6 +328,242 @@ class MirroredCopyTests(unittest.TestCase):
                         mirrored_copies((source, invalid), existing, axis)
         self.assertEqual(asdict(source), before)
         self.assertEqual(existing, [source])
+
+
+class ReferenceCopyAndDeletionTests(_CompoundFixture, unittest.TestCase):
+    def make_sources(self):
+        return (self.make_custom(), Pad("7", -3, 4, 1.6, 1.2, 35, 0.25))
+
+    def assert_same_shape(self, actual, expected):
+        actual = Polygon(world_outline(actual))
+        self.assertLess(actual.hausdorff_distance(expected), 1e-10)
+        self.assertLess(actual.symmetric_difference(expected).area, 1e-10)
+
+    def test_reference_point_copy_translates_group_without_changing_attributes(self):
+        sources = self.make_sources()
+        existing = sources + (Pad("1", 0, 0, 1, 1), Pad("3", 0, 0, 1, 1))
+        before = tuple(asdict(pad) for pad in existing)
+        result = copy_pads_between_points(iter(sources), iter(existing), (1, -2), (9, 7))
+        self.assertEqual([pad.number for pad in result], ["2", "4"])
+        for source, copied in zip(sources, result):
+            self.assertEqual((copied.x, copied.y), (source.x + 8, source.y + 9))
+            self.assertEqual((copied.width, copied.height, copied.angle, copied.radius),
+                             (source.width, source.height, source.angle, source.radius))
+            self.assert_same_shape(copied, translate(Polygon(world_outline(source)), xoff=8, yoff=9))
+            if isinstance(source, CustomPad):
+                for field in ("outline", "corners", "paste_shapes", "curve_edges", "anchor_size"):
+                    self.assertEqual(getattr(copied, field), getattr(source, field))
+            for old, new in zip(world_paste_shapes(source), world_paste_shapes(copied)):
+                self.assertLess(math.dist((new.x, new.y), (old.x + 8, old.y + 9)), 1e-10)
+                self.assertEqual((new.width, new.height, new.angle, new.radius),
+                                 (old.width, old.height, old.angle, old.radius))
+        self.assertEqual((result[1].x - result[0].x, result[1].y - result[0].y),
+                         (sources[1].x - sources[0].x, sources[1].y - sources[0].y))
+        self.assertEqual(tuple(asdict(pad) for pad in existing), before)
+
+    def test_point_symmetry_uses_requested_center_and_rotates_copper_and_paste(self):
+        sources = self.make_sources()
+        before = tuple(asdict(pad) for pad in sources)
+        center = (2, -3)
+        result = point_symmetric_copies(sources, sources, center)
+        for source, copied in zip(sources, result):
+            self.assertEqual((copied.x, copied.y), (4 - source.x, -6 - source.y))
+            self.assertEqual(copied.angle, (source.angle % 360 + 180) % 360)
+            self.assert_same_shape(copied, rotate(Polygon(world_outline(source)), 180, origin=center))
+            if isinstance(source, CustomPad):
+                for field in ("outline", "corners", "paste_shapes", "curve_edges", "anchor_size"):
+                    self.assertEqual(getattr(copied, field), getattr(source, field))
+            for old, new in zip(world_paste_shapes(source), world_paste_shapes(copied)):
+                self.assertLess(math.dist((new.x, new.y), (4 - old.x, -6 - old.y)), 1e-10)
+                self.assertEqual((new.width, new.height, new.radius), (old.width, old.height, old.radius))
+                self.assertAlmostEqual(new.angle % 360, (old.angle % 360 + 180) % 360, places=10)
+        self.assertEqual(tuple(asdict(pad) for pad in sources), before)
+
+    def test_arbitrary_oblique_line_reflects_compound_fillets_paste_and_rotated_roundrect(self):
+        sources = self.make_sources()
+        before = tuple(asdict(pad) for pad in sources)
+        # Independent reflection matrix for line (1,2) -> (5,5), whose unit
+        # normal is (-3/5,4/5) and signed offset is 1 mm.
+        matrix = [0.28, 0.96, 0.96, -0.28, -1.2, 1.6]
+        result = line_symmetric_copies(sources, sources, (1, 2), (5, 5))
+        for source, copied in zip(sources, result):
+            expected_center = (0.28 * source.x + 0.96 * source.y - 1.2,
+                               0.96 * source.x - 0.28 * source.y + 1.6)
+            self.assertLess(math.dist((copied.x, copied.y), expected_center), 1e-10)
+            expected_angle = (2 * math.degrees(math.atan2(-3, 4)) - source.angle % 360) % 360
+            self.assertAlmostEqual(copied.angle, expected_angle, places=10)
+            self.assertEqual((copied.width, copied.height, copied.radius),
+                             (source.width, source.height, source.radius))
+            self.assert_same_shape(copied, affine_transform(Polygon(world_outline(source)), matrix))
+            if isinstance(source, CustomPad):
+                self.assertEqual(copied.outline, tuple((x, -y) for x, y in source.outline))
+                self.assertEqual(copied.corners, tuple((x, -y) for x, y in source.corners))
+                self.assertEqual(copied.curve_edges, source.curve_edges)
+                self.assertEqual(copied.anchor_size, source.anchor_size)
+            for old, new in zip(world_paste_shapes(source), world_paste_shapes(copied)):
+                self.assert_same_shape(new, affine_transform(Polygon(world_outline(old)), matrix))
+                expected_number = old.number if isinstance(source, CustomPad) else copied.number
+                self.assertEqual((new.number, new.width, new.height, new.radius),
+                                 (expected_number, old.width, old.height, old.radius))
+        self.assertEqual(tuple(asdict(pad) for pad in sources), before)
+
+    def test_reversed_line_points_and_double_reflection_preserve_world_geometry(self):
+        sources = self.make_sources()
+        first = line_symmetric_copies(sources, sources, (1, 2), (5, 5))
+        reversed_axis = line_symmetric_copies(sources, sources, (5, 5), (1, 2))
+        twice = line_symmetric_copies(first, sources, (1, 2), (5, 5))
+        for original, reflected, reverse, restored in zip(sources, first, reversed_axis, twice):
+            self.assert_same_shape(reverse, Polygon(world_outline(reflected)))
+            self.assertAlmostEqual(reverse.angle, reflected.angle, places=10)
+            self.assert_same_shape(restored, Polygon(world_outline(original)))
+            self.assertLess(math.dist((restored.x, restored.y), (original.x, original.y)), 1e-10)
+            self.assertAlmostEqual(restored.angle, original.angle % 360, places=10)
+            for old, new in zip(world_paste_shapes(original), world_paste_shapes(restored)):
+                self.assert_same_shape(new, Polygon(world_outline(old)))
+
+    def test_all_copy_variants_explicitly_support_keeping_numbers(self):
+        sources = self.make_sources()
+        operations = (
+            lambda: copy_pads_between_points(sources, sources, (1, 2), (1, 2), keep_numbers=True),
+            lambda: point_symmetric_copies(sources, sources, (1, 2), keep_numbers=True),
+            lambda: line_symmetric_copies(sources, sources, (1, 2), (5, 5), keep_numbers=True),
+        )
+        for operation in operations:
+            with self.subTest(operation=operation):
+                self.assertEqual([pad.number for pad in operation()], ["7", "7"])
+
+    def test_axis_direction_does_not_depend_on_vector_length_even_at_float_limits(self):
+        sources = self.make_sources()
+        expected = line_symmetric_copies(sources, sources, (0, 0), (1, 1))
+        for vector in ((5e-324, 5e-324), (1e-250, 1e-250), (1.7e308, 1.7e308)):
+            with self.subTest(vector=vector):
+                reflected = line_symmetric_copies(sources, sources, (0, 0), vector)
+                for reference, copied in zip(expected, reflected):
+                    self.assert_same_shape(copied, Polygon(world_outline(reference)))
+                    self.assertEqual(copied.angle, reference.angle)
+
+    def test_reflection_transforms_graphic_vertices_and_arc_sweep_without_changing_layer(self):
+        sources = (
+            Graphic("1", 3, -4, 4, 2, 27, graphic_kind="line", layer="B.SilkS",
+                    vertices=((-0.5, -0.4), (0.3, 0.5))),
+            Graphic("2", -3, 2, 3, 2, -17, graphic_kind="polygon", layer="F.Fab", filled=True,
+                    vertices=((-0.5, -0.5), (0.5, -0.3), (0.2, 0.5))),
+            Graphic("3", 2, 1, 2, 2, 35, graphic_kind="arc", layer="B.CrtYd",
+                    vertices=((-0.5, 0), (0, -0.5), (0.5, 0))),
+        )
+        before = tuple(asdict(graphic) for graphic in sources)
+        operations = (
+            (lambda: mirrored_copies(sources, sources, "x"), lambda x, y: (x, -y)),
+            (lambda: mirrored_copies(sources, sources, "y"), lambda x, y: (-x, y)),
+            (lambda: line_symmetric_copies(sources, sources, (1, 2), (5, 5)),
+             lambda x, y: (0.28 * x + 0.96 * y - 1.2, 0.96 * x - 0.28 * y + 1.6)),
+        )
+        for operation, transform in operations:
+            for source, copied in zip(sources, operation()):
+                self.assertIsInstance(copied, Graphic)
+                self.assertEqual(copied.vertices, tuple((x, -y) for x, y in source.vertices))
+                for field in ("graphic_kind", "layer", "layers", "stroke", "filled", "width", "height"):
+                    self.assertEqual(getattr(copied, field), getattr(source, field))
+                old_points = world_vertices(source, arc_points(source)) if source.graphic_kind == "arc" else world_vertices(source)
+                new_points = world_vertices(copied, arc_points(copied)) if copied.graphic_kind == "arc" else world_vertices(copied)
+                for old, new in zip(old_points, new_points):
+                    self.assertLess(math.dist(new, transform(*old)), 1e-10)
+        self.assertEqual(tuple(asdict(graphic) for graphic in sources), before)
+
+    def test_copy_transforms_preserve_hole_back_layer_and_opening_metadata(self):
+        source = Pad("5", 3, -2, 3, 2, 25, pad_type="thru_hole", pad_shape="oval",
+                     layers=("*.Cu", "*.Mask"), drill_width=1.2, drill_height=0.8,
+                     mask_margin=0.1, paste_margin=-0.05, paste_ratio=0.1,
+                     preserved=('(thermal_bridge_angle 45)',))
+        operations = (
+            lambda: copy_pads_between_points((source,), (), (0, 0), (1, 2)),
+            lambda: point_symmetric_copies((source,), (), (1, 2)),
+            lambda: line_symmetric_copies((source,), (), (1, 2), (5, 5)),
+            lambda: mirrored_copies((source,), (), "x"),
+        )
+        for operation in operations:
+            copied = operation()[0]
+            for field in ("pad_type", "pad_shape", "layers", "drill_width", "drill_height",
+                          "mask_margin", "paste_margin", "paste_ratio", "preserved"):
+                self.assertEqual(getattr(copied, field), getattr(source, field))
+
+    def test_copy_apis_remove_output_uuids_but_keep_and_transform_raw_metadata_snapshots(self):
+        preserved = ('(uuid "original")', ' ( tstamp "legacy")', '(clearance 0.2)', '(uuid_extra "keep")')
+        custom = self.make_custom()
+        custom = replace(custom, preserved=preserved,
+                         paste_shapes=tuple(replace(pad, preserved=preserved) for pad in custom.paste_shapes),
+                         paste_sources=tuple(replace(pad, preserved=preserved) for pad in custom.paste_sources))
+        sources = (custom, Pad("2", 0, 0, 1, 1, preserved=preserved),
+                   Graphic("3", 0, 0, 2, 2, preserved=preserved))
+        before = tuple(asdict(pad) for pad in sources)
+        operations = (
+            lambda: duplicate_pads(sources, sources, (0, 0)),
+            lambda: copy_pads_between_points(sources, sources, (1, 2), (3, 4)),
+            lambda: point_symmetric_copies(sources, sources, (1, 2)),
+            lambda: mirrored_copies(sources, sources, "x"),
+            lambda: mirrored_copies(sources, sources, "y"),
+            lambda: line_symmetric_copies(sources, sources, (1, 2), (5, 5)),
+        )
+        for operation in operations:
+            for copied in operation():
+                self.assertEqual(copied.preserved, preserved[2:])
+                if isinstance(copied, CustomPad):
+                    self.assertTrue(all(pad.preserved == preserved[2:] for pad in copied.paste_shapes))
+                    self.assertTrue(all(pad.preserved == preserved for pad in copied.paste_sources))
+        for axis in ("x", "y"):
+            reflected = mirrored_copies((custom,), (), axis)[0]
+            for original, copied in zip(world_paste_sources(custom), world_paste_sources(reflected)):
+                self.assertLess(math.dist((copied.x, copied.y), self.reflect_point((original.x, original.y), axis)), 1e-10)
+                self.assert_reflected_geometry(original, copied, axis)
+        self.assertEqual(tuple(asdict(pad) for pad in sources), before)
+
+    def test_invalid_points_axes_and_corrupt_sources_fail_without_changing_originals(self):
+        sources = self.make_sources()
+        before = tuple(asdict(pad) for pad in sources)
+        operations = [
+            lambda: copy_pads_between_points((), sources, (0, 0), (1, 2)),
+            lambda: point_symmetric_copies((), sources, (0, 0)),
+            lambda: line_symmetric_copies((), sources, (0, 0), (1, 2)),
+            lambda: copy_pads_between_points(sources, sources, (0, 0), (3000, 0)),
+            lambda: point_symmetric_copies(sources, sources, (3000, 0)),
+            lambda: line_symmetric_copies(sources, sources, (3000, 0), (3000, 1)),
+            lambda: line_symmetric_copies(sources, sources, (1, 2), (1, 2)),
+            lambda: line_symmetric_copies(sources, sources, (-1e308, 0), (1e308, 0)),
+        ]
+        for bad in ((math.nan, 0), (0, math.inf)):
+            operations.extend((
+                lambda bad=bad: copy_pads_between_points(sources, sources, bad, (0, 0)),
+                lambda bad=bad: copy_pads_between_points(sources, sources, (0, 0), bad),
+                lambda bad=bad: point_symmetric_copies(sources, sources, bad),
+                lambda bad=bad: line_symmetric_copies(sources, sources, bad, (1, 2)),
+                lambda bad=bad: line_symmetric_copies(sources, sources, (1, 2), bad),
+            ))
+        corrupt = replace(sources[1])
+        object.__setattr__(corrupt, "angle", math.nan)
+        operations.extend((
+            lambda: copy_pads_between_points((sources[0], corrupt), sources, (0, 0), (1, 2)),
+            lambda: point_symmetric_copies((sources[0], corrupt), sources, (0, 0)),
+            lambda: line_symmetric_copies((sources[0], corrupt), sources, (0, 0), (1, 2)),
+        ))
+        for operation in operations:
+            with self.subTest(operation=operation), self.assertRaises(ValueError):
+                operation()
+            self.assertEqual(tuple(asdict(pad) for pad in sources), before)
+
+    def test_deletion_preserves_unselected_objects_order_attributes_and_original_list(self):
+        custom, rounded = self.make_sources()
+        pads = [Pad("1", 1, 2, 1, 1), custom, Pad("1", 3, 4, 1, 1), rounded]
+        before = [asdict(pad) for pad in pads]
+        remaining = delete_selected_pads(pads, iter((2, 0)))
+        self.assertEqual(remaining, [custom, rounded])
+        self.assertIs(remaining[0], custom)
+        self.assertIs(remaining[1], rounded)
+        self.assertEqual([asdict(pad) for pad in pads], before)
+        self.assertEqual(delete_selected_pads(pads, range(len(pads))), [])
+        for indices in ((), (0, 0), (-1,), (4,), (True,), (1.5,)):
+            with self.subTest(indices=indices), self.assertRaises(ValueError):
+                delete_selected_pads(pads, indices)
+            self.assertEqual([asdict(pad) for pad in pads], before)
 
 
 if __name__ == "__main__":

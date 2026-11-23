@@ -39,6 +39,14 @@ def hit_pad(pad: Pad, point_mm: Point) -> bool:
     """Test the actual rectangle/roundrect outline, including its boundary."""
     if isinstance(pad, CustomPad):
         return hit_custom_pad(pad, point_mm)
+    from .graphics import Graphic, graphic_outline, world_vertices
+    if isinstance(pad, Graphic):
+        from shapely import LineString, Point as GeometryPoint, Polygon
+        points = world_vertices(pad, graphic_outline(pad))
+        if pad.graphic_kind in ("line", "arc"):
+            return LineString(points).distance(GeometryPoint(point_mm)) <= max(pad.stroke/2, 0.05)
+        polygon = Polygon(points)
+        return polygon.covers(GeometryPoint(point_mm)) if pad.filled else polygon.boundary.distance(GeometryPoint(point_mm)) <= max(pad.stroke/2, 0.05)
     if not all(math.isfinite(value) for value in point_mm):
         return False
     cosine, sine = _rotation(pad)
@@ -51,11 +59,12 @@ def hit_pad(pad: Pad, point_mm: Point) -> bool:
     epsilon = 8 * math.ulp(max(1.0, abs(pad.x), abs(pad.y), *map(abs, point_mm)))
     if local_x > half_width + epsilon or local_y > half_height + epsilon:
         return False
-    if pad.radius == 0:
+    radius = min(pad.width, pad.height)/2 if pad.pad_shape in ("circle", "oval") else pad.radius
+    if radius == 0:
         return True
-    corner_x = max(0.0, local_x - (half_width - pad.radius))
-    corner_y = max(0.0, local_y - (half_height - pad.radius))
-    return math.hypot(corner_x, corner_y) <= pad.radius + epsilon
+    corner_x = max(0.0, local_x - (half_width - radius))
+    corner_y = max(0.0, local_y - (half_height - radius))
+    return math.hypot(corner_x, corner_y) <= radius + epsilon
 
 
 def resize_pad(pad: Pad, corner_index: int, target_point_mm: Point) -> Pad:

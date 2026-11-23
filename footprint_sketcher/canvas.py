@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 import tkinter as tk
 from tkinter import font as tkfont
 
@@ -10,6 +11,7 @@ from PIL import Image, ImageTk
 
 from .model import AxisCalibration, Pad, Point, Sketch
 from .compound import CustomPad, world_paste_shapes
+from .graphics import Graphic, graphic_outline
 
 
 SURFACE = "#ffffff"
@@ -41,6 +43,8 @@ class SketchCanvas(tk.Canvas):
             root=self, family=tkfont.nametofont("TkDefaultFont", root=self).actual("family"),
             size=16, weight="bold",
         )
+        self.hidden_layers: set[str] = set()
+        self.locked_layers: set[str] = set()
 
     def set_image(self, image: Image.Image) -> None:
         self.image = image
@@ -307,7 +311,40 @@ class SketchCanvas(tk.Canvas):
     def _draw_pad(
         self, pad: Pad, sketch: Sketch, *, index: int | None = None, preview: bool = False
     ) -> None:
-        vertices = self._pad_vertices(pad, sketch, pad_outline(pad))
+        if all(layer in self.hidden_layers for layer in pad.layers):
+            return
+        if isinstance(pad, Graphic):
+            vertices = self._pad_vertices(pad, sketch, graphic_outline(pad))
+            color = {"F.Cu": "#b7413b", "B.Cu": "#3453b5", "F.Paste": "#aa7618",
+                     "F.Mask": "#7d409c", "F.CrtYd": "#ac318c", "F.Fab": "#71817f"}.get(pad.layer, "#485467")
+            coordinates = self._clipped(vertices)
+            tags = ("graphic", f"pad-{index}")
+            if pad.graphic_kind in ("line", "arc"):
+                self.create_line(coordinates, fill=BLUE if preview else color,
+                                 width=max(1, pad.stroke / sketch.calibration.mm_per_pixel_x * self.scale), tags=tags)
+            else:
+                self.create_polygon(coordinates, fill=color if pad.filled else "", outline=color,
+                                    width=max(1, pad.stroke / sketch.calibration.mm_per_pixel_x * self.scale), tags=tags)
+            return
+        copper_visible = any(layer.endswith("Cu") and layer not in self.hidden_layers for layer in pad.layers)
+        mask_visible = any(layer.endswith("Mask") and layer not in self.hidden_layers for layer in pad.layers)
+        paste_visible = any(layer.endswith("Paste") and layer not in self.hidden_layers for layer in pad.layers)
+        display_pad = pad
+        if not copper_visible and not isinstance(pad, CustomPad):
+            margin = pad.mask_margin if mask_visible else pad.paste_margin
+            ratio = 0 if mask_visible else pad.paste_ratio
+            width, height = pad.width*(1+2*ratio)+2*margin, pad.height*(1+2*ratio)+2*margin
+            radius = min(max(0, pad.radius+margin), width/2, height/2)
+            display_pad = Pad(pad.number or "opening", pad.x, pad.y, width, height, pad.angle, radius,
+                              pad_shape=pad.pad_shape if pad.pad_shape in ("circle", "oval") else "auto")
+            if paste_visible and not mask_visible:
+                display_pad = world_paste_shapes(pad)[0]
+        vertices = self._pad_vertices(display_pad, sketch, pad_outline(display_pad))
+        if isinstance(pad, CustomPad) and not copper_visible and mask_visible and pad.mask_margin:
+            from shapely import Polygon
+            buffered = Polygon(pad.outline).buffer(pad.mask_margin)
+            if not buffered.is_empty and buffered.geom_type == "Polygon":
+                vertices = self._pad_vertices(pad, sketch, list(buffered.exterior.coords))
         options = {
             "fill": BLUE if preview else TEAL,
             "outline": BLUE if preview else TEAL,
@@ -318,8 +355,14 @@ class SketchCanvas(tk.Canvas):
         }
         if preview:
             options["dash"] = (5, 3)
-        self.create_polygon(self._clipped(vertices), **options)
-        if isinstance(pad, CustomPad):
+        if copper_visible or mask_visible or not isinstance(pad, CustomPad):
+            self.create_polygon(self._clipped(vertices), **options)
+        if pad.pad_type != "smd" and copper_visible:
+            hole = Pad("hole", pad.x, pad.y, pad.drill_width, pad.drill_height,
+                       angle=pad.angle, pad_shape="oval")
+            opening = self._pad_vertices(hole, sketch, pad_outline(hole))
+            self.create_polygon(self._clipped(opening), fill=WORKSPACE, outline=INK, tags=("drill",))
+        if isinstance(pad, CustomPad) and paste_visible:
             for aperture in world_paste_shapes(pad):
                 opening = self._pad_vertices(aperture, sketch, pad_outline(aperture))
                 self.create_polygon(self._clipped(opening), fill="", outline="#b56e00", dash=(3, 3),
@@ -408,11 +451,13 @@ class SketchCanvas(tk.Canvas):
 
 
 def pad_outline(pad: Pad) -> list[Point]:
+    if isinstance(pad, Graphic):
+        return graphic_outline(pad)
     if isinstance(pad, CustomPad):
         return list(pad.outline)
     left, right = -pad.width / 2, pad.width / 2
     top, bottom = -pad.height / 2, pad.height / 2
-    radius = pad.radius
+    radius = min(pad.width, pad.height)/2 if pad.pad_shape in ("circle", "oval") else pad.radius
     if radius == 0:
         return [(left, top), (right, top), (right, bottom), (left, bottom)]
 
