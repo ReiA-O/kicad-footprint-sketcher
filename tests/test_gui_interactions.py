@@ -214,6 +214,121 @@ class GuiInteractionTests(unittest.TestCase):
         ]:
             self.assertEqual(float(variable.get()), getattr(pad, name))
 
+    def test_pad_field_enter_updates_selection_and_validates_only_the_next_placement_template(self):
+        from dataclasses import replace
+
+        def press_return(variable):
+            matches = [widget for widget in self._walk(self.root)
+                       if isinstance(widget, ttk.Entry)
+                       and str(widget.cget("textvariable")) == str(variable)]
+            self.assertEqual(len(matches), 1)
+            self.assertFalse(matches[0].instate(["disabled"]))
+            matches[0].focus_set()
+            matches[0].event_generate("<Return>", when="tail")
+            self._pump()
+
+        self._calibrate()
+        self.app.center_snap.set(False)
+        for variable, value in ((self.app.pad_width, "2"), (self.app.pad_height, "1.2"),
+                                (self.app.pad_angle, "0"), (self.app.pad_radius, "0.2")):
+            self._entry(variable, value)
+        self._button("数値サイズで配置")
+        self._click((-2, 0), world=True)
+        self._button("選択/移動")
+        original = self.app.sketch.pads[0]
+        baseline, payload = self._state(), self._export_bytes()
+        history = tuple(self.app.history._snapshots)
+        for variable, attribute, value in ((self.app.pad_width, "width", 2.4),
+                                           (self.app.pad_height, "height", 1.6),
+                                           (self.app.pad_angle, "angle", 30),
+                                           (self.app.pad_radius, "radius", 0.3),
+                                           (self.app.pad_number, "number", "R9")):
+            with self.subTest(selected_field=attribute):
+                self._click((original.x, original.y), world=True)
+                self._entry(variable, value)
+                press_return(variable)
+                self.assertEqual(self.app.sketch.pads, [replace(original, **{attribute: value})])
+                self.assertEqual((self.app.mode, self.app.tool.get()), ("idle", "select"))
+                self.assertEqual(self.app.selected_indices, {0})
+                self.assertEqual(len(self.app.history._snapshots), len(history) + 1)
+                self._button("1操作戻す")
+                self.assertEqual(self._state(), baseline)
+                self.assertEqual(tuple(self.app.history._snapshots), history)
+                self.assertEqual(self._export_bytes(), payload)
+
+        for variable, invalid in ((self.app.pad_width, ""), (self.app.pad_height, "-1"),
+                                  (self.app.pad_angle, "nan"), (self.app.pad_radius, "1"),
+                                  (self.app.pad_number, "")):
+            with self.subTest(invalid_field=str(variable)):
+                self._click((original.x, original.y), world=True)
+                self._entry(variable, invalid)
+                press_return(variable)
+                self.assertEqual(variable.get(), invalid)
+                self.assertEqual(self._state(), baseline)
+                self.assertEqual((self.app.mode, self.app.tool.get()), ("idle", "select"))
+                self.assertEqual(tuple(self.app.history._snapshots), history)
+                self.assertEqual(self._export_bytes(), payload)
+
+        self._button("数値サイズで配置")
+        for variable, value in ((self.app.pad_width, "1.8"), (self.app.pad_height, "0.8"),
+                                (self.app.pad_angle, "45"), (self.app.pad_radius, "0.2")):
+            self._entry(variable, value)
+        press_return(self.app.pad_height)
+        self.assertEqual((self.app.mode, self.app.tool.get()), ("pad", "pad"))
+        self.assertEqual(self._state(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        target = self._click((2, 1), world=True)
+        second = self.app.sketch.pads[1]
+        self._assert_point((second.x, second.y), target)
+        self.assertEqual((second.width, second.height, second.angle, second.radius), (1.8, 0.8, 45, 0.2))
+        self.assertEqual(self.app.sketch.pads[0], original)
+
+        placed, placed_history = self._state(), tuple(self.app.history._snapshots)
+        for variable, value in ((self.app.pad_width, "0.9"), (self.app.pad_height, "0.6"),
+                                (self.app.pad_angle, "-20"), (self.app.pad_radius, "0.1")):
+            self._entry(variable, value)
+        press_return(self.app.pad_angle)
+        self.assertEqual(self._state(), placed)
+        self.assertEqual(tuple(self.app.history._snapshots), placed_history)
+        self.assertEqual((self.app.mode, self.app.tool.get()), ("pad", "pad"))
+        self._click((4, -1), world=True)
+        self.assertEqual(tuple(self.app.sketch.pads[:2]), placed[2])
+        third = self.app.sketch.pads[2]
+        self.assertEqual((third.width, third.height, third.angle, third.radius), (0.9, 0.6, -20, 0.1))
+        placed, placed_history = self._state(), tuple(self.app.history._snapshots)
+        self._entry(self.app.pad_width, "")
+        press_return(self.app.pad_width)
+        self.assertEqual(self.app.pad_width.get(), "")
+        self.assertEqual((self.app.mode, self.app.tool.get()), ("pad", "pad"))
+        self.assertEqual(self._state(), placed)
+        self.assertEqual(tuple(self.app.history._snapshots), placed_history)
+
+        self._button("矩形パッド")
+        self._entry(self.app.pad_width, "1.1")
+        press_return(self.app.pad_width)
+        self.assertEqual((self.app.mode, self.app.tool.get()), ("pad", "pad"))
+        self.assertEqual(self._state(), placed)
+        self.assertEqual(tuple(self.app.history._snapshots), placed_history)
+        self._click((0, 3), world=True)
+        self.assertEqual(tuple(self.app.sketch.pads[:3]), placed[2])
+        fourth = self.app.sketch.pads[3]
+        self.assertEqual((fourth.width, fourth.height, fourth.angle, fourth.radius), (1.1, 0.6, 0, 0))
+
+        placed, placed_history = self._state(), tuple(self.app.history._snapshots)
+        self._button("角丸パッド")
+        for variable, value in ((self.app.pad_angle, "30"), (self.app.pad_radius, "0.15"),
+                                (self.app.pad_number, "Q")):
+            self._entry(variable, value)
+            press_return(variable)
+            self.assertEqual((self.app.mode, self.app.tool.get()), ("draw", "roundrect"))
+            self.assertEqual(self._state(), placed)
+            self.assertEqual(tuple(self.app.history._snapshots), placed_history)
+        self._drag_world((0, -3), (1, -2))
+        self.assertEqual(tuple(self.app.sketch.pads[:4]), placed[2])
+        self.assertEqual((self.app.sketch.pads[4].number, self.app.sketch.pads[4].angle,
+                          self.app.sketch.pads[4].radius), ("Q", 30, 0.15))
+        self.assertEqual(len(self.app.history._snapshots), len(placed_history) + 1)
+
     def test_visible_number_editor_commits_only_number_cancels_and_keeps_next_draw_number_unused(self):
         from dataclasses import replace
 
@@ -483,7 +598,9 @@ class GuiInteractionTests(unittest.TestCase):
         history = tuple(self.app.history._snapshots)
         select_rows([0, 1])
         self._entry(self.app.merge_number, "L1")
-        self._button("選択図形を合体")
+        self.app._merge_entry.focus_set()
+        self.app._merge_entry.event_generate("<Return>", when="tail")
+        self._pump()
         self.assertEqual(len(self.app.sketch.pads), 1)
         merged = self.app.sketch.pads[0]
         self.assertIsInstance(merged, CustomPad)
@@ -509,7 +626,9 @@ class GuiInteractionTests(unittest.TestCase):
                            key=lambda index: (merged.corners[index][0], -merged.corners[index][1]))
         chosen = merged.corners[corner_index]
         self._entry(self.app.fillet_radius, "0.2")
-        self._button("角を選んでフィレット")
+        self.app._fillet_radius_entry.focus_set()
+        self.app._fillet_radius_entry.event_generate("<Return>", when="tail")
+        self._pump()
         self.assertEqual(self.app.mode, "fillet")
         self.assertEqual(len(self.app.canvas.find_withtag("fillet-corner")), 6)
         screen = self.app._corner_screens(merged)[corner_index]

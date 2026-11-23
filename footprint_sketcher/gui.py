@@ -414,18 +414,23 @@ class SketcherApp:
         )
         self._width_entry = self._field(panel, "幅 (mm)", self.pad_width, 13, 0)
         self._height_entry = self._field(panel, "高さ (mm)", self.pad_height, 13, 1)
-        self._field(panel, "角度 (°・反時計回り)", self.pad_angle, 15, 0)
+        self._angle_entry = self._field(panel, "角度 (°・反時計回り)", self.pad_angle, 15, 0)
         self._radius_entry = self._field(panel, "角のR (mm)", self.pad_radius, 15, 1)
         self._number_entry = self._field(panel, "パッド番号", self.pad_number, 17, 0)
         self._placement_button = ttk.Button(panel, text="パッドを配置", command=self.begin_placement)
         self._placement_button.grid(row=18, column=1, sticky="ew", padx=(3, 0))
         self._selection_button = ttk.Button(panel, text="選択パッドに適用", command=self.apply_selected)
         self._selection_button.grid(row=19, column=0, columnspan=2, sticky="ew", pady=(7, 0))
+        for entry in (self._width_entry, self._height_entry, self._angle_entry,
+                      self._radius_entry, self._number_entry):
+            entry.bind("<Return>", self.apply_pad_fields)
         self._section(panel, "形状の合体・フィレット", 20)
-        self._field(panel, "合体後の端子番号", self.merge_number, 22, 0)
+        self._merge_entry = self._field(panel, "合体後の端子番号", self.merge_number, 22, 0)
+        self._merge_entry.bind("<Return>", lambda _event: self.merge_selected() or "break")
         self._merge_button = ttk.Button(panel, text="選択図形を合体", command=self.merge_selected)
         self._merge_button.grid(row=23, column=1, sticky="ew", padx=(3, 0))
-        self._field(panel, "フィレットR (mm)", self.fillet_radius, 24, 0)
+        self._fillet_radius_entry = self._field(panel, "フィレットR (mm)", self.fillet_radius, 24, 0)
+        self._fillet_radius_entry.bind("<Return>", self.fillet_radius_enter)
         self._fillet_button = ttk.Button(panel, text="角を選んでフィレット", command=self.begin_fillet)
         self._fillet_button.grid(row=25, column=1, sticky="ew", padx=(3, 0))
         ttk.Label(panel, text="銅箔・Maskは合体、Pasteは元の開口を保持。\n金色の点線はPaste、十字は接続点です。\n合体後の寸法変更はUndoで合体前に戻します。",
@@ -674,6 +679,9 @@ class SketcherApp:
         self._refresh()
 
     def begin_placement(self) -> None:
+        if self.sketch.calibration is None or self.sketch.origin is None:
+            self._message("先に校正を適用し、原点を指定してください。", error=True)
+            return
         previous_number = self.pad_number.get()
         if not self.pad_number.get() or (self.mode == "idle" and self.selected_index is not None
                                         and self.pad_number.get() == self.sketch.pads[self.selected_index].number):
@@ -696,6 +704,42 @@ class SketcherApp:
         self.tool.set("pad")
         self._message("入力した幅・高さ・角度・Rで、中心をクリックして連続配置できます。Escで終了します。")
         self._refresh()
+
+    def apply_pad_fields(self, event: tk.Event) -> str:
+        if self.mode == "idle" and self.selected_index is not None:
+            self.apply_selected()
+            return "break"
+        if self.mode == "draw" and event.widget not in (self._width_entry, self._height_entry):
+            try:
+                angle = self._read_number(self.pad_angle, "角度")
+                radius = self._read_number(self.pad_radius, "角のR")
+                if radius < 0 or (self._draw_shape == "roundrect" and radius == 0):
+                    raise ValueError("角丸パッドのRには正の値を指定してください。")
+                Pad(self.pad_number.get(), 0, 0, 1, 1, angle, 0)
+            except ValueError as error:
+                self._message(str(error), error=True)
+                return "break"
+            self._message("番号・角度・Rの入力値を確認しました。ドラッグ作成を続けられます。")
+            self._refresh()
+            return "break"
+        if self.mode in ("idle", "pad", "draw"):
+            self.begin_placement()
+            return "break"
+        self._message("配置済みパッドの数値を変更する場合は、選択/移動に切り替えて選択してください。")
+        return "break"
+
+    def fillet_radius_enter(self, _event: tk.Event) -> str:
+        try:
+            if self._read_number(self.fillet_radius, "フィレットR") <= 0:
+                raise ValueError("フィレットRには正の値をmmで指定してください。")
+        except ValueError as error:
+            self._message(str(error), error=True)
+            return "break"
+        if self.selected_index is None or len(self.selected_indices) != 1 or not isinstance(self.sketch.pads[self.selected_index], CustomPad):
+            self._message("合体パッドを1個選択してから、丸める角を選んでください。", error=True)
+            return "break"
+        self.begin_fillet()
+        return "break"
 
     def _pad_at(self, coordinates: Point) -> Pad:
         return Pad(
