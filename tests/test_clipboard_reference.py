@@ -1,10 +1,13 @@
+import io
 from pathlib import Path
+import struct
 import tempfile
 import traceback
 import unittest
 from unittest.mock import Mock, patch
+import zlib
 
-from PIL import Image
+from PIL import Image, ImageGrab
 
 from footprint_sketcher.clipboard_reference import read_clipboard_reference
 
@@ -20,6 +23,21 @@ class ClipboardReferenceTests(unittest.TestCase):
     def read(self, content):
         with patch("footprint_sketcher.clipboard_reference.ImageGrab.grabclipboard", return_value=content):
             return read_clipboard_reference(self.root)
+
+    def read_windows(self, format, payload):
+        # Exercise Pillow's Windows decoder while keeping the OS clipboard out
+        # of the test, including on Linux hosts without this native function.
+        with patch.object(ImageGrab.sys, "platform", "win32"), patch.object(
+                Image.core, "grabclipboard_win32", create=True, return_value=(format, payload)):
+            return read_clipboard_reference(self.root)
+
+    def png_with_trailing_chunk(self, kind, payload):
+        with Image.new("RGB", (1, 1), "red") as source, io.BytesIO() as output:
+            source.save(output, format="PNG")
+            png = output.getvalue()
+        chunk = (struct.pack(">I", len(payload)) + kind + payload
+                 + struct.pack(">I", zlib.crc32(kind + payload)))
+        return png[:-12] + chunk + png[-12:]
 
     def test_bitmap_is_independent_rgba_and_preserves_alpha_without_metadata(self):
         original = Image.new("RGBA", (4, 3), (30, 70, 120, 90))
@@ -145,6 +163,36 @@ class ClipboardReferenceTests(unittest.TestCase):
         with patch("footprint_sketcher.clipboard_reference.ImageGrab.grabclipboard", side_effect=Image.DecompressionBombWarning("too large")):
             with self.assertRaisesRegex(ValueError, "読み取れません"):
                 read_clipboard_reference(self.root)
+        self.root.clipboard_get.assert_not_called()
+
+    def test_malformed_windows_payloads_are_reported_without_decoder_details(self):
+        for format, payload in (("png", b"private invalid PNG"), ("file", b"x"),
+                                ("file", b"\0" * 4)):
+            with self.subTest(format=format, payload=payload):
+                with self.assertRaisesRegex(ValueError, "読み取れません") as caught:
+                    self.read_windows(format, payload)
+                self.assertNotIn("private", "".join(traceback.format_exception(caught.exception)))
+        self.root.clipboard_get.assert_not_called()
+
+    def test_corrupt_png_metadata_is_rejected_after_opening_for_bitmap_and_file(self):
+        # Pillow parses these chunks lazily while converting pixels; each one
+        # raises a different decoder exception after Image.open has succeeded.
+        for kind, payload in ((b"tRNS", b"\0"), (b"iCCP", b""),
+                              (b"zTXt", b"private\0\1invalid")):
+            png = self.png_with_trailing_chunk(kind, payload)
+            with self.subTest(kind=kind, source="bitmap"):
+                source = Image.open(io.BytesIO(png))
+                with self.assertRaisesRegex(ValueError, "読み取れません") as caught:
+                    self.read(source)
+                self.assertIsNone(source.fp)
+                self.assertNotIn("private", "".join(traceback.format_exception(caught.exception)))
+            with self.subTest(kind=kind, source="file"):
+                path = self.path / "private.png"
+                path.write_bytes(png)
+                with self.assertRaisesRegex(ValueError, "開けません") as caught:
+                    self.read([str(path)])
+                self.assertNotIn("private", "".join(traceback.format_exception(caught.exception)))
+                path.unlink()
         self.root.clipboard_get.assert_not_called()
 
     def test_unsupported_bitmap_payload_and_empty_text_are_rejected(self):

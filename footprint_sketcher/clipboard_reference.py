@@ -5,6 +5,7 @@ caller owns the returned image and decides when to change the current document.
 """
 from dataclasses import dataclass
 from pathlib import Path
+import struct
 from typing import Protocol
 import warnings
 
@@ -49,7 +50,8 @@ def _file_reference(value: str | Path) -> ClipboardReference:
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             with Image.open(path, formats=("PNG", "JPEG")) as source:
                 return ClipboardReference(image=_copy_image(source))
-    except (OSError, MemoryError, Image.DecompressionBombError, Image.DecompressionBombWarning):
+    except (OSError, SyntaxError, IndexError, struct.error, MemoryError,
+            Image.DecompressionBombError, Image.DecompressionBombWarning):
         raise ValueError("コピーした画像を開けません。PNG・JPEGの内容と画像サイズを確認してください。") from None
 
 
@@ -79,14 +81,15 @@ def read_clipboard_reference(root: ClipboardOwner) -> ClipboardReference:
     except NotImplementedError:
         # The text path still works when this platform lacks a bitmap provider.
         content = None
-    except (OSError, RuntimeError, ValueError, MemoryError,
+    except (OSError, RuntimeError, ValueError, SyntaxError, IndexError, struct.error, MemoryError,
             Image.DecompressionBombError, Image.DecompressionBombWarning):
         raise ValueError("クリップボードを読み取れません。ほかの操作が終わってからコピーし直してください。") from None
 
     if isinstance(content, Image.Image):
         try:
             return ClipboardReference(image=_copy_image(content))
-        except (OSError, RuntimeError, MemoryError, Image.DecompressionBombError):
+        except (OSError, RuntimeError, SyntaxError, IndexError, struct.error, MemoryError,
+                Image.DecompressionBombError):
             raise ValueError("クリップボード画像を読み取れません。範囲を小さくしてコピーし直してください。") from None
         finally:
             content.close()

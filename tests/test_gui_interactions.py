@@ -214,6 +214,108 @@ class GuiInteractionTests(unittest.TestCase):
         ]:
             self.assertEqual(float(variable.get()), getattr(pad, name))
 
+    def test_uncalibrated_image_only_document_requires_confirmation_before_replacement(self):
+        from PIL import Image
+        from footprint_sketcher.editing import Snapshot
+
+        self.assertIsNone(self.app.sketch.calibration)
+        self.assertFalse(self.app.sketch.pads)
+        old_image = self.app.canvas.image
+        state = Snapshot.capture(self.app.sketch), old_image.tobytes(), self.app.image_name.get()
+        path = Path(self.temporary.name) / "replacement.png"
+        with Image.new("RGB", (40, 30), "blue") as replacement:
+            replacement.save(path)
+        with patch("footprint_sketcher.gui.messagebox.askyesno", return_value=False) as ask:
+            self.app.load_image(path)
+        ask.assert_called_once()
+        self.assertIs(self.app.canvas.image, old_image)
+        self.assertEqual((Snapshot.capture(self.app.sketch), old_image.tobytes(), self.app.image_name.get()), state)
+
+        self.app.tools.project_path = Path(self.temporary.name) / "previous.kfsproj"
+        self.app.tools.fields["reference"].set("STALE")
+        self.app.tools.fields["doc_value"].set("Previous document")
+        with patch("footprint_sketcher.gui.messagebox.askyesno", return_value=True):
+            self.app.load_image(path)
+        self.assertEqual(self.app.canvas.image.size, (40, 30))
+        self.assertIsNone(self.app.tools.project_path)
+        self.assertTrue(self.app.tools._document_unsaved)
+        self.assertEqual(self.app.tools.fields["reference"].get(), self.app.sketch.reference)
+        self.assertEqual(self.app.tools.fields["doc_value"].get(), self.app.sketch.value)
+
+    def test_document_attribute_undo_restores_visible_fields_before_reapplying(self):
+        self._calibrate()
+        self.app.tools.open_panel(4)
+        self._pump()
+        self._entry(self.app.tools.fields["reference"], "U9")
+        self._entry(self.app.tools.fields["doc_value"], "Edited value")
+        self._button("Reference / Valueを反映")
+        self.assertEqual((self.app.sketch.reference, self.app.sketch.value), ("U9", "Edited value"))
+        self._button("1操作戻す")
+        self.assertEqual((self.app.sketch.reference, self.app.sketch.value), ("REF**", ""))
+        self.assertEqual((self.app.tools.fields["reference"].get(), self.app.tools.fields["doc_value"].get()), ("REF**", ""))
+        self._button("Reference / Valueを反映")
+        self.assertEqual((self.app.sketch.reference, self.app.sketch.value), ("REF**", ""))
+
+    def test_corrupt_image_decoder_failure_keeps_the_existing_document(self):
+        import io
+        import struct
+        import zlib
+        from PIL import Image
+        from footprint_sketcher.editing import Snapshot
+
+        self._calibrate()
+        old_image = self.app.canvas.image
+        state = Snapshot.capture(self.app.sketch), old_image.tobytes(), tuple(self.app.history._snapshots)
+        with Image.new("RGB", (1, 1), "red") as pixel, io.BytesIO() as output:
+            pixel.save(output, format="PNG")
+            png = output.getvalue()
+        for kind, payload in ((b"tRNS", b"\0"), (b"iCCP", b""), (b"zTXt", b"note\0\1invalid")):
+            chunk = struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload))
+            path = Path(self.temporary.name) / "invalid.png"
+            path.write_bytes(png[:-12] + chunk + png[-12:])
+            with self.subTest(kind=kind), patch("footprint_sketcher.gui.messagebox.askyesno") as ask:
+                self.app.load_image(path)
+                ask.assert_not_called()
+                self.assertIn("下絵を開けませんでした", self.app.status.get())
+                self.assertIs(self.app.canvas.image, old_image)
+                self.assertEqual((Snapshot.capture(self.app.sketch), old_image.tobytes(), tuple(self.app.history._snapshots)), state)
+                with patch("footprint_sketcher.workspace.filedialog.askopenfilename", return_value=str(path)):
+                    self.app.tools.attach_reference()
+                self.assertIn("下絵読込失敗", self.app.status.get())
+                self.assertIs(self.app.canvas.image, old_image)
+                self.assertEqual((Snapshot.capture(self.app.sketch), old_image.tobytes(), tuple(self.app.history._snapshots)), state)
+            path.unlink()
+
+    def test_reference_larger_than_project_limit_is_rejected_before_pixel_decoding(self):
+        import io
+        import struct
+        import zlib
+        from PIL import Image
+        from footprint_sketcher.editing import Snapshot
+
+        # A valid PNG header is sufficient: the pixels must never be decoded.
+        with Image.new("RGB", (1, 1), "white") as source, io.BytesIO() as output:
+            source.save(output, format="PNG")
+            png = output.getvalue()
+        header = struct.pack(">II", 50_001, 1000) + png[24:29]
+        png = png[:16] + header + struct.pack(">I", zlib.crc32(b"IHDR" + header)) + png[33:]
+        path = Path(self.temporary.name) / "large.png"
+        path.write_bytes(png)
+        old_image = self.app.canvas.image
+        before = Snapshot.capture(self.app.sketch), old_image.tobytes(), tuple(self.app.history._snapshots)
+        for attach in (False, True):
+            with self.subTest(attach=attach), patch("footprint_sketcher.gui.messagebox.askyesno") as ask:
+                if attach:
+                    with patch("footprint_sketcher.workspace.filedialog.askopenfilename", return_value=str(path)):
+                        self.app.tools.attach_reference()
+                else:
+                    self.app.load_image(path)
+                ask.assert_not_called()
+                self.assertIn("5000万画素", self.app.status.get())
+                self.assertIs(self.app.canvas.image, old_image)
+                self.assertEqual((Snapshot.capture(self.app.sketch), old_image.tobytes(), tuple(self.app.history._snapshots)), before)
+        path.unlink()
+
     def test_pending_complete_calibration_blocks_selected_edits_until_explicitly_finished(self):
         from dataclasses import replace
 

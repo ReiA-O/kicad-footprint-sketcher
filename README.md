@@ -64,6 +64,8 @@ Windowsで185件の自動試験と、KiCad 10.0.7で148出力の読戻し照合�
 
 ## 不具合・要望
 
+クリップボード／PDF取込みの[バグ再点検と修正記録](docs/verification/reference-import-review-20261123.md)も公開しています。
+
 [GitHub Issues](https://github.com/ReiA-O/kicad-footprint-sketcher/issues)へ、再現手順、期待する動作と実際の動作、Windows／Python／KiCadの版を添えてください。画像やログから個人名・ローカルパス・機密情報を除いてから投稿してください。[報告と変更提案の案内](CONTRIBUTING.md)、[セキュリティ上の報告](SECURITY.md)も参照できます。
 
 ## 利用条件と開発資料

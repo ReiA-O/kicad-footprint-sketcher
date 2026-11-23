@@ -141,6 +141,45 @@ class PdfViewerGuiTests(unittest.TestCase):
         self._drag((300, 650), (400, 730))
         self.assertEqual(self.dialog.selected_crop, (300, 650, 100, 80))
 
+    def test_wheel_zoom_during_drag_keeps_the_start_in_source_coordinates(self):
+        self._unit_zoom()
+        canvas = self.dialog.canvas
+        start = tuple(round(value) for value in self.dialog.image_to_canvas(100, 100))
+        before_zoom = tuple(round(value) for value in self.dialog.image_to_canvas(200, 180))
+        canvas.event_generate("<ButtonPress-1>", x=start[0], y=start[1])
+        canvas.event_generate("<B1-Motion>", x=before_zoom[0], y=before_zoom[1])
+        canvas.event_generate("<MouseWheel>", delta=120, x=before_zoom[0], y=before_zoom[1])
+        self.root.update()
+        self.assertGreater(self.dialog.scale, 1)
+
+        # These source coordinates also land on whole screen pixels at 1.25x.
+        end = tuple(round(value) for value in self.dialog.image_to_canvas(300, 252))
+        canvas.event_generate("<B1-Motion>", x=end[0], y=end[1])
+        canvas.event_generate("<ButtonRelease-1>", x=end[0], y=end[1])
+        self.root.update()
+        self.assertEqual(self.dialog.selected_crop, (100, 100, 200, 152))
+        expected = self.dialog._page_image.crop((100, 100, 300, 252))
+        try:
+            self.dialog.import_selection()
+            self.assertEqual(self.dialog.result.image.tobytes(), expected.tobytes())
+        finally:
+            expected.close()
+
+    def test_middle_button_pan_then_reverse_drag_selects_source_pixels(self):
+        self._unit_zoom()
+        self.dialog.zoom_at(2, (0, 0))
+        self.root.update()
+        canvas = self.dialog.canvas
+        origin = (canvas.canvasx(0), canvas.canvasy(0))
+        canvas.event_generate("<ButtonPress-2>", x=180, y=180)
+        canvas.event_generate("<B2-Motion>", x=80, y=60)
+        canvas.event_generate("<ButtonRelease-2>", x=80, y=60)
+        self.root.update()
+        self.assertGreater(canvas.canvasx(0), origin[0])
+        self.assertGreater(canvas.canvasy(0), origin[1])
+        self._drag((240, 180), (140, 100))
+        self.assertEqual(self.dialog.selected_crop, (140, 100, 100, 80))
+
     def test_reverse_drag_outside_page_clamps_and_single_click_cannot_import(self):
         self._unit_zoom()
         self._drag((250, 200), (-100, -50))
@@ -212,6 +251,38 @@ class PdfViewerGuiTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result.image.size, (1200, 1560))
         self.assertEqual(focused_windows, [str(self.dialog)])
+
+    def test_destroying_parent_root_releases_modal_wait_and_pending_redraw(self):
+        parent = tk.Tk()
+        errors = []
+        parent.report_callback_exception = lambda *args: errors.append(args)
+        dialog = None
+        pending = []
+        try:
+            dialog = PdfCropDialog(parent, self.path)
+            parent.update()
+
+            def close_parent():
+                dialog._queue_draw()
+                pending.append(dialog._redraw_id)
+                parent.destroy()
+
+            parent.after(30, close_parent)
+            self.assertIsNone(dialog.show())
+            self.assertEqual(len(pending), 1)
+            self.assertIsNotNone(pending[0])
+            self.assertTrue(dialog._closing)
+            self.assertIsNone(dialog._page_image)
+            self.assertIsNone(dialog._redraw_id)
+            self.assertNotIn(pending[0], parent.tk.call("after", "info"))
+            self.assertEqual(errors, [])
+        finally:
+            if dialog is not None:
+                dialog.destroy()
+            try:
+                parent.destroy()
+            except tk.TclError:
+                pass
 
     def test_invalid_pdf_does_not_leave_an_orphan_window(self):
         invalid = Path(self.temporary.name) / "invalid.pdf"

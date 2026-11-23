@@ -25,6 +25,67 @@ _spec.loader.exec_module(_extended)
 
 
 class ReferenceImportGuiTests(_extended.ExtendedGuiTests):
+    def test_new_document_resets_reference_and_value_fields(self):
+        from footprint_sketcher.gui import UNIFORM_METHOD
+
+        tools = self._tools(4)
+        self._field("reference", "U_PREVIOUS")
+        self._field("doc_value", "Previous_Value")
+        self._button("Reference / Valueを反映")
+        self.assertEqual((self.app.sketch.reference, self.app.sketch.value),
+                         ("U_PREVIOUS", "Previous_Value"))
+        with patch("footprint_sketcher.workspace.messagebox.askyesno", return_value=True):
+            tools.new()
+        self._pump()
+        self.assertEqual((tools.fields["reference"].get(), tools.fields["doc_value"].get()),
+                         (self.app.sketch.reference, self.app.sketch.value))
+        self.assertEqual((self.app.sketch.reference, self.app.sketch.value), ("REF**", ""))
+        self.assertEqual(self.app.calibration_method.get(), UNIFORM_METHOD)
+        self.assertEqual(float(self.app.distance.get()), self.app.sketch.calibration.distance)
+        self.assertEqual(self.app.vertical_distance.get(), "")
+        baseline = self._document()
+        self._button("Reference / Valueを反映")
+        self.assertEqual(self._document(), baseline)
+        self.assertFalse(self.app.history.can_undo)
+
+    def test_project_open_restores_calibration_inputs_and_clears_obsolete_distances(self):
+        from footprint_sketcher.gui import AXIS_METHOD, UNIFORM_METHOD
+        from footprint_sketcher.model import AxisCalibration, Calibration, Sketch
+        from footprint_sketcher.persistence import save_project
+
+        cases = (
+            (AxisCalibration((0, 0), (50, 0), 7.25, (0, 0), (0, 30), 3.5),
+             AXIS_METHOD, 1, "7.25", "3.5"),
+            (Calibration((0, 0), (50, 0), 4.75), UNIFORM_METHOD, 0, "4.75", ""),
+            (None, AXIS_METHOD, 0, "", ""),
+        )
+        for index, (calibration, method, previous_method, distance, vertical) in enumerate(cases):
+            with self.subTest(calibration=type(calibration).__name__):
+                self.app._method_combo.current(0)
+                self.app._method_combo.event_generate("<<ComboboxSelected>>", when="tail")
+                self._pump()
+                self._entry(self.app.distance, "999")
+                self._entry(self.app.vertical_distance, "888")
+                self.app._method_combo.current(previous_method)
+                self.app._method_combo.event_generate("<<ComboboxSelected>>", when="tail")
+                self._pump()
+                sketch = Sketch()
+                sketch.calibration = calibration
+                if calibration is not None:
+                    sketch.origin = (30, 20)
+                path = Path(self.temporary.name) / f"calibration-{index}.kfsproj"
+                with Image.new("RGBA", (60, 40), "white") as image:
+                    save_project(path, sketch, image, f"Calibration_{index}")
+                with patch("footprint_sketcher.workspace.filedialog.askopenfilename", return_value=str(path)), \
+                     patch("footprint_sketcher.workspace.messagebox.askyesno", return_value=True):
+                    self.app.tools.open_project()
+                self._pump()
+                self.assertEqual(self._document(), Snapshot.capture(sketch))
+                self.assertEqual(self.app.calibration_method.get(), method)
+                self.assertEqual(self.app.distance.get(), distance)
+                self.assertEqual(self.app.vertical_distance.get(), vertical)
+                self.assertEqual(self.app._vertical_entry.instate(["disabled"]), method != AXIS_METHOD)
+
     def _import_state(self):
         tools = self.app.tools
         image = self.app.canvas.image
@@ -35,7 +96,7 @@ class ReferenceImportGuiTests(_extended.ExtendedGuiTests):
             tuple(self.app.calibration_points), self.app.mode, self.app.tool.get(),
             self.app.selected_index, frozenset(self.app.selected_indices),
             self.app.distance.get(), self.app.vertical_distance.get(),
-            tools.saved, tools.saved_name, tools.saved_image,
+            tools.saved, tools.saved_name, tools.saved_image, tools._document_unsaved,
         )
 
     def _geometry_with_copy(self):
@@ -153,6 +214,55 @@ class ReferenceImportGuiTests(_extended.ExtendedGuiTests):
         with patch("footprint_sketcher.workspace.messagebox.askyesno", return_value=False) as ask:
             self.assertFalse(tools._confirm_discard())
         ask.assert_called_once()
+
+    def test_same_pixel_pdf_import_remains_unsaved_until_saved(self):
+        tools = self.app.tools
+        self._entry(self.app.footprint_name, "Same_Pixels")
+        image = Image.new("RGBA", (25, 20), (20, 40, 60, 80))
+        with patch("footprint_sketcher.workspace.read_clipboard_reference",
+                   return_value=ClipboardReference(image=image)):
+            self._button("画像を貼り付け")
+        path = Path(self.temporary.name) / "same-pixels.kfsproj"
+        with patch("footprint_sketcher.workspace.filedialog.asksaveasfilename", return_value=str(path)):
+            tools.save()
+        self.assertTrue(path.is_file(), self.app.status.get())
+        saved_bytes = path.read_bytes()
+        document = self._document()
+        pixels = image.tobytes()
+        selection = SimpleNamespace(image=image.copy(), label="same.pdf — 1ページ")
+        with patch("footprint_sketcher.workspace.select_pdf_reference", return_value=selection), \
+             patch("footprint_sketcher.workspace.messagebox.askyesno") as ask:
+            tools.open_pdf(path="same.pdf")
+        ask.assert_not_called()
+        self.assertEqual(self._document(), document)
+        self.assertEqual(self.app.canvas.image.tobytes(), pixels)
+        self.assertIsNone(tools.project_path)
+        with patch("footprint_sketcher.workspace.messagebox.askyesno", return_value=False) as ask:
+            self.assertFalse(tools._confirm_discard())
+        ask.assert_called_once()
+        self.assertEqual(path.read_bytes(), saved_bytes)
+
+        with patch("footprint_sketcher.workspace.filedialog.asksaveasfilename", return_value=""):
+            tools.save()
+        with patch("footprint_sketcher.workspace.messagebox.askyesno", return_value=False) as ask:
+            self.assertFalse(tools._confirm_discard())
+        ask.assert_called_once()
+
+        with patch("footprint_sketcher.workspace.filedialog.asksaveasfilename", return_value=str(path)), \
+             patch("footprint_sketcher.persistence.save_project", side_effect=ValueError("保存停止")):
+            tools.save()
+        self.assertEqual(path.read_bytes(), saved_bytes)
+        self.assertIsNone(tools.project_path)
+        with patch("footprint_sketcher.workspace.messagebox.askyesno", return_value=False) as ask:
+            self.assertFalse(tools._confirm_discard())
+        ask.assert_called_once()
+
+        with patch("footprint_sketcher.workspace.filedialog.asksaveasfilename", return_value=str(path)):
+            tools.save()
+        self.assertEqual(tools.project_path, path)
+        with patch("footprint_sketcher.workspace.messagebox.askyesno") as ask:
+            self.assertTrue(tools._confirm_discard())
+        ask.assert_not_called()
 
     def test_clipboard_pdf_uses_viewer_and_keeps_geometry_or_cancels_without_changes(self):
         self._geometry_with_copy()
