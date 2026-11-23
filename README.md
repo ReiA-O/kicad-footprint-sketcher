@@ -11,6 +11,7 @@
 ## できること
 
 - PNG・JPEG・PDFを下絵にし、横／縦別の実寸校正、原点指定、拡大・移動。
+- クリップボード画像やコピーした画像／PDFファイルを下絵へ取り込み、PDFはページを見ながら必要な範囲をドラッグで切り取り。
 - 矩形・角丸などのSMDパッド、PTH／NPTH、線・円・円弧・多角形を作成。
 - 数値寸法、番号変更、連続配置、範囲選択、コピー、反転、整列・等間隔、Undo。
 - Customパッドへの合体、選択角フィレット、Mask／Pasteの設定・独立開口・Paste分割。
@@ -51,6 +52,8 @@
 
 [KiCad出力例](examples/requirements-demo/Requirements_Demo.pretty/Requirements_Demo.kicad_mod)も同梱しています。最初から下絵を校正して作る場合は、[PNG・JPEGの10 mmサンプル手順](docs/USAGE.md#下絵から作る10-mmサンプル)を使ってください。
 
+画面の切り抜きを使う場合は「画像を貼り付け」、PDFから選ぶ場合は「PDFを切り取る…」を使えます。[下絵の貼り付け・PDF切り取り手順](docs/USAGE.md#pdf下絵の差し替え)も参照してください。
+
 ## 対応範囲と検証状況
 
 KiCad入出力は10.0系の形式 `20260206` が対象です。未対応の要素は原文を保持し、保全できない変更は保存を停止します。任意のKiCadファイルの全要素を編集できるものではありません。
@@ -60,6 +63,8 @@ Customパッド全体の幅・高さ・R変更と四隅リサイズ、Redo、画
 Windowsで185件の自動試験と、KiCad 10.0.7で148出力の読戻し照合を実施しています。自動試験ではファイル選択の戻り値を指定し、出力はAPIで照合しました。通常ダイアログを含む最新の全手順と、全出力のKiCad画面／Windows Footprint Checker確認は未完了で、通常GUIでの操作・インポート・Checker実行による確認が必要です。[検証結果・再現条件・未確認事項](docs/verification/windows-strict-review-20261123/README.md)を公開しています。
 
 ## 不具合・要望
+
+クリップボード／PDF取込みの[バグ再点検と修正記録](docs/verification/reference-import-review-20261123.md)も公開しています。
 
 [GitHub Issues](https://github.com/ReiA-O/kicad-footprint-sketcher/issues)へ、再現手順、期待する動作と実際の動作、Windows／Python／KiCadの版を添えてください。画像やログから個人名・ローカルパス・機密情報を除いてから投稿してください。[報告と変更提案の案内](CONTRIBUTING.md)、[セキュリティ上の報告](SECURITY.md)も参照できます。
 

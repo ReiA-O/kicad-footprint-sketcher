@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import struct
 from dataclasses import replace
 from pathlib import Path
 import tkinter as tk
@@ -405,9 +406,17 @@ class SketcherApp:
         bar.bind("<Configure>", fit)
 
     def _build_controls(self, panel: ttk.Frame) -> None:
-        ttk.Button(panel, text="下絵を開く…", command=self.open_image).grid(
-            row=0, column=0, columnspan=2, sticky="ew"
-        )
+        reference_tools = ttk.Frame(panel)
+        reference_tools.grid(row=0, column=0, columnspan=2, sticky="ew")
+        reference_tools.columnconfigure((0, 1), weight=1)
+        ttk.Button(reference_tools, text="下絵を開く…", command=self.open_image).grid(
+            row=0, column=0, columnspan=2, sticky="ew")
+        ttk.Button(reference_tools, text="画像を貼り付け",
+                   command=lambda: self.tools.paste_reference_from_clipboard()).grid(
+            row=1, column=0, sticky="ew", pady=(5, 0), padx=(0, 3))
+        ttk.Button(reference_tools, text="PDFを切り取る…",
+                   command=lambda: self.tools.open_pdf()).grid(
+            row=1, column=1, sticky="ew", pady=(5, 0), padx=(3, 0))
         self._section(panel, "校正と原点", 1)
         self._method_combo = ttk.Combobox(panel, textvariable=self.calibration_method,
                                          values=(AXIS_METHOD, UNIFORM_METHOD), state="readonly", width=24)
@@ -605,15 +614,20 @@ class SketcherApp:
     def load_image(self, path: Path) -> None:
         try:
             with Image.open(path, formats=("PNG", "JPEG")) as source:
+                if source.width * source.height > 50_000_000:
+                    self._message("下絵が大きすぎます。保存可能な5000万画素以下へ縮小または切り取ってください。", error=True)
+                    return
                 image = source.convert("RGBA")
-        except (OSError, ValueError, Image.DecompressionBombError):
+        except (OSError, ValueError, SyntaxError, IndexError, struct.error, Image.DecompressionBombError):
             self._message(f"下絵を開けませんでした。PNG・JPEGファイルを確認してください。 {path.name}", error=True)
             return
-        if (Snapshot.capture(self.sketch) != Snapshot.capture(Sketch()) or self.calibration_points) and not messagebox.askyesno(
+        if (self.canvas.image is not None or Snapshot.capture(self.sketch) != Snapshot.capture(Sketch())
+                or self.calibration_points) and not messagebox.askyesno(
             "下絵を切り替え",
-            "下絵を切り替えると、現在の編集データ（校正・原点・図形・拘束など）が消去されます。続けますか？",
+            "下絵を切り替えると、現在の下絵と編集データ（校正・原点・図形・拘束など）が消去されます。続けますか？",
             parent=self.root,
         ):
+            image.close()
             return
 
         self.sketch = Sketch()
@@ -630,6 +644,9 @@ class SketcherApp:
         self.distance.set("")
         self.vertical_distance.set("")
         self.canvas.set_image(image)
+        self.tools.project_path = None
+        self.tools._document_unsaved = True
+        self.tools._sync_document_fields()
         self.image_name.set(f"{path.name}  ·  {image.width} × {image.height} px")
         self._message("下絵を表示しました。校正方式を選び、基準となる点を指定してください。")
         self._refresh_pad_list()
@@ -637,6 +654,19 @@ class SketcherApp:
 
     def _axis_method(self) -> bool:
         return self.calibration_method.get() == AXIS_METHOD
+
+    def _sync_calibration_fields(self) -> None:
+        """Show the restored model's calibration, without reapplying it."""
+        calibration = self.sketch.calibration
+        self.distance.set("")
+        self.vertical_distance.set("")
+        if isinstance(calibration, AxisCalibration):
+            self.calibration_method.set(AXIS_METHOD)
+            self.distance.set(str(calibration.x_distance))
+            self.vertical_distance.set(str(calibration.y_distance))
+        elif calibration is not None:
+            self.calibration_method.set(UNIFORM_METHOD)
+            self.distance.set(str(calibration.distance))
 
     def _calibration_mode_changed(self, _event: tk.Event | None = None) -> None:
         self._clear_preview()
@@ -1033,16 +1063,11 @@ class SketcherApp:
             return
         active_mode = self.mode
         previous.restore(self.sketch)
+        self.tools._sync_document_fields()
+        self._sync_calibration_fields()
         self.selected_index = None
         self._clear_preview()
         calibration = self.sketch.calibration
-        if isinstance(calibration, AxisCalibration):
-            self.calibration_method.set(AXIS_METHOD)
-            self.distance.set(str(calibration.x_distance))
-            self.vertical_distance.set(str(calibration.y_distance))
-        elif calibration is not None:
-            self.calibration_method.set(UNIFORM_METHOD)
-            self.distance.set(str(calibration.distance))
         if active_mode in ("draw", "pad", "paste") and calibration is not None and self.sketch.origin is not None:
             self.mode = active_mode
             self.tool.set(self._draw_shape if active_mode == "draw" else "pad" if active_mode == "pad" else "")

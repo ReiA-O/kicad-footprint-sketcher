@@ -7,6 +7,7 @@ import importlib.util
 import math
 from pathlib import Path
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from PIL import Image
@@ -762,7 +763,7 @@ class ExtendedGuiTests(_base.GuiInteractionTests):
         self.assertEqual(edited.pads, self.app.sketch.pads)
         self.assertEqual(OWNER.read_bytes(), original_bytes)
 
-    def test_pdf_page_and_crop_are_loaded_through_gui_and_bad_crop_keeps_the_document(self):
+    def test_pdf_viewer_crop_is_loaded_through_gui_and_viewer_error_keeps_the_document(self):
         if importlib.util.find_spec("pypdfium2") is None:
             self.skipTest("PDF GUI check requires the declared pypdfium2 dependency.")
         path = Path(self.temporary.name) / "pages.pdf"
@@ -770,9 +771,11 @@ class ExtendedGuiTests(_base.GuiInteractionTests):
         first.save(path, "PDF", resolution=72, save_all=True, append_images=[second])
         self._calibrate()
         self._tools(4)
+        from footprint_sketcher.reference import render_pdf_page
+        selection = SimpleNamespace(image=render_pdf_page(path, 1, crop=(20, 10, 100, 60)),
+                                    label="pages.pdf — 2ページ（範囲）")
         with patch("footprint_sketcher.workspace.filedialog.askopenfilename", return_value=str(path)), \
-             patch("footprint_sketcher.workspace.simpledialog.askinteger", return_value=2), \
-             patch("footprint_sketcher.workspace.simpledialog.askstring", return_value="20,10,100,60"), \
+             patch("footprint_sketcher.workspace.select_pdf_reference", return_value=selection), \
              patch("footprint_sketcher.workspace.messagebox.askyesno", return_value=True):
             self._button("PDFのページ／範囲を開く…")
         self.assertEqual(self.app.canvas.image.size, (100, 60))
@@ -784,8 +787,7 @@ class ExtendedGuiTests(_base.GuiInteractionTests):
         self.assertIsNone(self.app.sketch.origin)
         baseline, pixels = self._document(), self.app.canvas.image.tobytes()
         with patch("footprint_sketcher.workspace.filedialog.askopenfilename", return_value=str(path)), \
-             patch("footprint_sketcher.workspace.simpledialog.askinteger", return_value=2), \
-             patch("footprint_sketcher.workspace.simpledialog.askstring", return_value="1000,0,10,10"):
+             patch("footprint_sketcher.workspace.select_pdf_reference", side_effect=ValueError("PDFページを表示できません。")):
             self._button("PDFのページ／範囲を開く…")
         self.assertEqual(self._document(), baseline)
         self.assertEqual(self.app.canvas.image.tobytes(), pixels)

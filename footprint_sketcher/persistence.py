@@ -9,6 +9,7 @@ import math
 import os
 from pathlib import Path
 import stat
+import struct
 from tempfile import NamedTemporaryFile
 import warnings
 import zipfile
@@ -774,6 +775,6 @@ def load_project(path: Path) -> tuple[str, Sketch, Image.Image | None]:
                         image = source.convert("RGBA")
             return name, sketch, image
     except (zipfile.BadZipFile, UnicodeError, KeyError, TypeError, AttributeError, IndexError, OverflowError,
-            OSError, RuntimeError, NotImplementedError, RecursionError,
+            OSError, RuntimeError, SyntaxError, struct.error, NotImplementedError, RecursionError,
             Image.DecompressionBombError, Image.DecompressionBombWarning) as error:
         raise ValueError("プロジェクトを読み込めません。形式・構造・画像を確認してください。") from error

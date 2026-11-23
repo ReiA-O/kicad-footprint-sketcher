@@ -3,10 +3,12 @@ from dataclasses import replace
 from io import BytesIO
 import json
 from pathlib import Path
+import struct
 import tempfile
 import unittest
 import warnings
 import zipfile
+import zlib
 
 from PIL import Image
 
@@ -61,6 +63,10 @@ class PersistenceTests(unittest.TestCase):
         save_project(path, sketch, None, 'Good')
         with zipfile.ZipFile(path) as archive:
             return json.loads(archive.read('project.json'))
+
+    def png_chunk(self, kind, payload):
+        return (struct.pack('>I', len(payload)) + kind + payload
+                + struct.pack('>I', zlib.crc32(kind + payload)))
 
     def test_utf8_escape_crlf_and_unchanged_roundtrip_are_exact(self):
         text = BASIC.replace('\n', '\r\n')
@@ -575,6 +581,29 @@ class PersistenceTests(unittest.TestCase):
             archive.writestr('project.json', '{"format":"kicad-footprint-sketcher","version":1,"version":2}')
         with self.assertRaises(ValueError):
             load_project(path)
+
+    def test_corrupt_embedded_png_metadata_is_reported_as_project_load_failure(self):
+        document = self.project_document(); document['image'] = True
+        with Image.new('RGB', (1, 1), 'red') as source, BytesIO() as output:
+            source.save(output, format='PNG')
+            png = output.getvalue()
+        for kind, payload in ((b'tRNS', b'\0'), (b'iCCP', b''),
+                              (b'zTXt', b'private\0\1invalid')):
+            # These chunks pass Image.open and fail during lazy pixel decoding.
+            malformed = png[:-12] + self.png_chunk(kind, payload) + png[-12:]
+            with self.subTest(kind=kind), self.assertRaisesRegex(ValueError, 'プロジェクトを読み込めません'):
+                load_project(self.archive(document, [('image.png', malformed)]))
+
+    def test_oversized_embedded_image_is_rejected_before_pixel_decoding(self):
+        document = self.project_document(); document['image'] = True
+        # A real PNG header declares just over 50M pixels. The deliberately tiny
+        # IDAT must never be decoded into that full raster to reject the file.
+        png = (b'\x89PNG\r\n\x1a\n'
+               + self.png_chunk(b'IHDR', struct.pack('>IIBBBBB', 10_000, 5_001, 8, 2, 0, 0, 0))
+               + self.png_chunk(b'IDAT', zlib.compress(b'\0\xff\0\0'))
+               + self.png_chunk(b'IEND', b''))
+        with self.assertRaisesRegex(ValueError, '内包画像がサイズ上限'):
+            load_project(self.archive(document, [('image.png', png)]))
 
 
 if __name__ == '__main__':
