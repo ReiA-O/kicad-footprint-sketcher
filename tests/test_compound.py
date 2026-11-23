@@ -53,6 +53,35 @@ class CompoundTests(unittest.TestCase):
         self.assertEqual(tuple(asdict(pad) for pad in sources), before)
         self.assertPasteEqual(world_paste_shapes(merged), list(sources))
 
+    def test_custom_mask_margin_rejects_actual_empty_opening_without_changing_copper(self):
+        original = self.l_pad()
+        before = asdict(original)
+        # Both values pass the parent's bounding-box check. Only the actual
+        # concave copper outline identifies the point where the mask disappears.
+        smaller = replace(original, mask_margin=-0.55)
+        self.assertFalse(Polygon(world_outline(smaller)).buffer(smaller.mask_margin).is_empty)
+        self.assertEqual(smaller.outline, original.outline)
+        with self.assertRaisesRegex(ValueError, "Mask開口が消える"):
+            replace(original, mask_margin=-0.6)
+        self.assertEqual(asdict(original), before)
+
+    def test_custom_without_mask_can_keep_latent_margin_but_enabling_mask_validates_it(self):
+        original = self.l_pad()
+        disabled = replace(original, layers=("F.Cu", "F.Paste"), mask_margin=-0.6)
+        self.assertEqual(disabled.mask_margin, -0.6)
+        with self.assertRaisesRegex(ValueError, "Mask開口が消える"):
+            replace(disabled, layers=("F.Cu", "F.Paste", "F.Mask"))
+
+    def test_custom_mask_erosion_can_keep_multiple_nonempty_opening_components(self):
+        original = merge_pads([Pad("1", -1.5, 0, 2, 2), Pad("2", 1.5, 0, 2, 2),
+                               Pad("3", 0, 0, 2, 0.4)], "L")
+        reduced = replace(original, mask_margin=-0.3)
+        mask = Polygon(world_outline(reduced)).buffer(reduced.mask_margin)
+        self.assertEqual(mask.geom_type, "MultiPolygon")
+        self.assertEqual(len(mask.geoms), 2)
+        self.assertFalse(mask.is_empty)
+        self.assertEqual(reduced.outline, original.outline)
+
     def test_anchor_is_in_copper_even_when_bounding_box_center_is_outside(self):
         merged = self.l_pad()
         polygon = Polygon(world_outline(merged))

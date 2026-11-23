@@ -281,6 +281,13 @@ class CustomPad(Pad):
         if not (math.isclose(self.width, right - left, rel_tol=1e-12, abs_tol=1e-12)
                 and math.isclose(self.height, bottom - top, rel_tol=1e-12, abs_tol=1e-12)):
             raise ValueError("合体パッドの幅・高さは輪郭の外接寸法と一致させてください。")
+        if self.mask_margin < 0 and any(layer.endswith(".Mask") for layer in self.layers):
+            try:
+                mask = polygon.buffer(self.mask_margin)
+            except GEOSException as error:
+                raise ValueError("Mask開口の拡縮を計算できません。元の形状を保持します。") from error
+            if mask.is_empty:
+                raise ValueError("Mask開口が消える拡縮量は指定できません。")
         anchor_width, anchor_height = _checked_point(self.anchor_size)
         if min(anchor_width, anchor_height) < MIN_ANCHOR_SIDE_MM or not polygon.covers(
             box(-anchor_width / 2, -anchor_height / 2, anchor_width / 2, anchor_height / 2)

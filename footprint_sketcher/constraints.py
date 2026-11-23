@@ -332,6 +332,11 @@ def _solve_constraints(
         free_lookup = {column: reduced_column for reduced_column, column in enumerate(free)}
         for row in seed_rows:
             i, j = row.distance
+            # A previous seed may already have separated this pair through a
+            # symmetry/equality relation. Seeding it again can undo that step.
+            if math.hypot(values[columns[j, "x"]] - values[columns[i, "x"]],
+                          values[columns[j, "y"]] - values[columns[i, "y"]]) > _RESIDUAL_TOL:
+                continue
             delta = np.zeros((2, len(free)))
             for axis, field in enumerate(("x", "y")):
                 for index, sign in ((i, -1), (j, 1)):
@@ -346,6 +351,51 @@ def _solve_constraints(
                     stabilize(values)
                     break
     residual, jacobian = evaluate(values, equations)
+
+    def escape_singular(values, residual, jacobian, score, scale):
+        """Try a curved distance direction invisible to the current Jacobian.
+
+        At collinear centers every distance derivative perpendicular to the
+        line is zero. Newton steps alone therefore cannot form a triangle,
+        even when all specified distances are consistent. Project relative
+        center directions into the Jacobian's nullspace, preserving its linear
+        equations, and accept only an actual residual decrease.
+        """
+        if not free:
+            return None
+        reduced = jacobian[:, free]
+        _, _, right = np.linalg.svd(reduced, full_matrices=True)
+        nullspace = right[_rank(reduced):].T
+        if not nullspace.size:
+            return None
+        free_lookup = {column: reduced_column for reduced_column, column in enumerate(free)}
+        for number, row in enumerate(equations):
+            if row.distance is None or abs(residual[number]) <= _RESIDUAL_TOL:
+                continue
+            amplitude = math.sqrt(abs(float(residual[number]))) * math.sqrt(row.target)
+            i, j = row.distance
+            for field in ("x", "y"):
+                relative = np.zeros(len(free))
+                for index, sign in ((i, -1), (j, 1)):
+                    column = free_lookup.get(columns[index, field])
+                    if column is not None:
+                        relative[column] += sign
+                direction = nullspace @ (nullspace.T @ relative)
+                length = np.linalg.norm(direction)
+                if length <= _RANK_RCOND:
+                    continue
+                step = np.zeros(len(columns))
+                step[free] = direction * (amplitude / length)
+                for exponent in range(24):
+                    candidate = stabilize(values + step * (0.5 ** exponent))
+                    trial, trial_jacobian = evaluate(candidate, equations)
+                    if np.all(np.isfinite(candidate)) and np.all(np.isfinite(trial)) and (
+                        np.linalg.norm(trial / scale) < score * (1 - 1e-12)
+                        or np.max(np.abs(trial), initial=0) <= _RESIDUAL_TOL
+                    ):
+                        return candidate, trial, trial_jacobian
+        return None
+
     for _iteration in range(128):
         if np.max(np.abs(residual), initial=0) <= _RESIDUAL_TOL:
             break
@@ -365,7 +415,10 @@ def _solve_constraints(
                 values, residual, jacobian = candidate, trial, trial_jacobian
                 break
         else:
-            break
+            escaped = escape_singular(values, residual, jacobian, score, scale)
+            if escaped is None:
+                break
+            values, residual, jacobian = escaped
     maximum = float(np.max(np.abs(residual), initial=0))
     if not np.all(np.isfinite(values)) or not math.isfinite(maximum) or maximum > _RESIDUAL_TOL:
         fail(residual, equations)

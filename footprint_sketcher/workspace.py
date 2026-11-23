@@ -15,6 +15,7 @@ from .graphics import Graphic, graphic_from_points
 from .editing import (Snapshot, copy_pads_between_points, point_symmetric_copies,
                       line_symmetric_copies, delete_selected_pads)
 from .constraints import Constraint, solve_constraints
+from .layers import locked_content
 
 
 KINDS = {
@@ -180,7 +181,7 @@ class EditorTools:
         f = tabs[3]
         self._constraint_combo = self._entry(f, "拘束", "constraint", 0, values=tuple(KINDS))
         self._entry(f, "寸法値 (mm／度)", "value", 1)
-        ttk.Label(f, text="対象はキャンバス／一覧の選択順ではなく一覧順。\n2対象の対称はコピー・接続タブの中心を使用します。\n寸法・固定は1対象、関係拘束は2対象を選択します。", wraplength=650).grid(row=2, column=0, columnspan=2, sticky="w", pady=5)
+        ttk.Label(f, text="対象はキャンバス／一覧の選択順ではなく一覧順。\n関係拘束は中心（Customは接続点）の関係です。形状の反転には対称コピーを使います。\n2対象の対称はコピー・接続タブの中心を使用します。\n寸法・固定は1対象、関係拘束は2対象を選択します。", wraplength=650).grid(row=2, column=0, columnspan=2, sticky="w", pady=5)
         ttk.Button(f, text="選択対象へ拘束を追加", command=self.add_constraint).grid(row=3, column=0, columnspan=2, sticky="ew")
         ttk.Label(f, textvariable=self.state_label).grid(row=4, column=0, columnspan=2, sticky="w", pady=5)
         self.constraint_list = tk.Listbox(f, selectmode="extended", height=12, exportselection=False)
@@ -236,13 +237,30 @@ class EditorTools:
         before = Snapshot.capture(app.sketch)
         try:
             replacements = {}
-            for index in app.selected_indices:
+            used_numbers = {pad.number for pad in app.sketch.pads}
+            next_number = 1
+            for index in sorted(app.selected_indices):
                 pad = app.sketch.pads[index]
                 changes = {"x": self._num("x"), "y": self._num("y")} if len(app.selected_indices) == 1 else {}
                 if isinstance(pad, Graphic):
                     changes.update(layer=self.fields["layer"].get(), stroke=self._num("stroke"), filled=self.filled.get())
                 else:
                     changes.update(self.pad_options())
+                    from .compound import CustomPad
+                    if isinstance(pad, CustomPad) and changes["pad_shape"] != pad.pad_shape:
+                        raise ValueError("合体形状の種別変更には対応していません。Undoで合体前へ戻して編集してください。")
+                    if changes["pad_shape"] in ("rect", "circle", "oval"):
+                        changes["radius"] = 0
+                    elif changes["pad_shape"] == "roundrect" and pad.pad_shape != "roundrect":
+                        radius = app._read_number(app.pad_radius, "角のR")
+                        if radius <= 0:
+                            raise ValueError("角丸形状には、メイン画面の角のRへ正のmm値を入力してください。")
+                        changes["radius"] = radius
+                    if pad.pad_type == "np_thru_hole" and changes["pad_type"] != "np_thru_hole":
+                        while str(next_number) in used_numbers:
+                            next_number += 1
+                        changes["number"] = str(next_number)
+                        used_numbers.add(str(next_number))
                 replacements[index] = replace(pad, **changes)
             for index, pad in replacements.items():
                 app.sketch.pads[index] = pad
@@ -276,6 +294,9 @@ class EditorTools:
         self._changed(before, "選択を削除しました。残りの端子番号は保持しています。")
 
     def pick_point(self, fields):
+        if self.app.sketch.calibration is None or self.app.sketch.origin is None:
+            self.app._message("基準点をキャンバスで選ぶ前に、下絵を校正して原点を指定してください。", error=True)
+            return
         self.app.select_tool(); self._point_fields = fields; self.app.mode = "point"
         self.app._message("基準点をキャンバスでクリックしてください。")
         self.root.lift(); self.app.canvas.focus_set()
@@ -366,9 +387,9 @@ class EditorTools:
     def constrain(self, before):
         app = self.app
         # Layer locks also protect edits initiated from numeric fields/list.
-        for old in before.pads:
-            if old not in app.sketch.pads and any(layer in app.canvas.locked_layers for layer in old.layers):
-                raise ValueError("編集ロック中のレイヤーを変更できません。")
+        locked_before = locked_content(before.pads, app.canvas.locked_layers)
+        if locked_before != locked_content(app.sketch.pads, app.canvas.locked_layers):
+            raise ValueError("編集ロック中のレイヤーを変更できません。")
         if not app.sketch.constraints: return
         driving = {}
         if before.origin != app.sketch.origin and before.origin is not None and app.sketch.origin is not None:
@@ -387,8 +408,7 @@ class EditorTools:
                 changes = {key: getattr(new, key) for key in ("x", "y", "width", "height", "angle", "radius") if getattr(new, key) != getattr(old, key)}
                 if changes: driving[i] = changes
         result = solve_constraints(app.sketch.pads, app.sketch.constraints, driving=driving)
-        if any(old not in result.pads and any(layer in app.canvas.locked_layers for layer in old.layers)
-               for old in before.pads):
+        if locked_before != locked_content(result.pads, app.canvas.locked_layers):
             raise ValueError("拘束の追従で編集ロック中の図形が変わるため、操作を取り消しました。")
         app.sketch.pads[:] = result.pads
         self.last_constraint_error = ""
@@ -473,6 +493,7 @@ class EditorTools:
             self._drawing_points.append(point)
             if kind == "arc" and len(self._drawing_points) == 3: self._commit_graphic()
         else: self._drawing_points = [point]
+        app._refresh()
         return True
 
     def motion(self, event):

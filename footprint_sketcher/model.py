@@ -318,8 +318,8 @@ def _render_footprint(name: str, pads: Iterable[Pad], *, reference: str = "REF**
         ])
     if all(pad.pad_type == "smd" for pad in pad_records):
         lines.append("  (attr smd)")
-    for pad in pad_records:
-        lines.extend(_render_pad(pad))
+    from .persistence import _render_entities_with_ownership
+    lines.extend(_render_entities_with_ownership(pad_records))
     lines.extend(f"  {node}" for node in preserved_nodes)
     lines.append(")")
     return "\n".join(lines) + "\n"

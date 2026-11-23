@@ -12,6 +12,7 @@ from PIL import Image, ImageTk
 from .model import AxisCalibration, Pad, Point, Sketch
 from .compound import CustomPad, world_paste_shapes
 from .graphics import Graphic, graphic_outline
+from .layers import visible_layers
 
 
 SURFACE = "#ffffff"
@@ -311,7 +312,8 @@ class SketchCanvas(tk.Canvas):
     def _draw_pad(
         self, pad: Pad, sketch: Sketch, *, index: int | None = None, preview: bool = False
     ) -> None:
-        if all(layer in self.hidden_layers for layer in pad.layers):
+        visible = visible_layers(pad.layers, self.hidden_layers)
+        if not visible:
             return
         if isinstance(pad, Graphic):
             vertices = self._pad_vertices(pad, sketch, graphic_outline(pad))
@@ -326,9 +328,9 @@ class SketchCanvas(tk.Canvas):
                 self.create_polygon(coordinates, fill=color if pad.filled else "", outline=color,
                                     width=max(1, pad.stroke / sketch.calibration.mm_per_pixel_x * self.scale), tags=tags)
             return
-        copper_visible = any(layer.endswith("Cu") and layer not in self.hidden_layers for layer in pad.layers)
-        mask_visible = any(layer.endswith("Mask") and layer not in self.hidden_layers for layer in pad.layers)
-        paste_visible = any(layer.endswith("Paste") and layer not in self.hidden_layers for layer in pad.layers)
+        copper_visible = any(layer.endswith("Cu") for layer in visible)
+        mask_visible = any(layer.endswith("Mask") for layer in visible)
+        paste_visible = any(layer.endswith("Paste") for layer in visible)
         display_pad = pad
         if not copper_visible and not isinstance(pad, CustomPad):
             margin = pad.mask_margin if mask_visible else pad.paste_margin
@@ -340,11 +342,33 @@ class SketchCanvas(tk.Canvas):
             if paste_visible and not mask_visible:
                 display_pad = world_paste_shapes(pad)[0]
         vertices = self._pad_vertices(display_pad, sketch, pad_outline(display_pad))
+        body_vertices = [vertices]
+        body_outlines = []
         if isinstance(pad, CustomPad) and not copper_visible and mask_visible and pad.mask_margin:
-            from shapely import Polygon
+            from shapely import Polygon, constrained_delaunay_triangles
             buffered = Polygon(pad.outline).buffer(pad.mask_margin)
-            if not buffered.is_empty and buffered.geom_type == "Polygon":
-                vertices = self._pad_vertices(pad, sketch, list(buffered.exterior.coords))
+            components = ([buffered] if buffered.geom_type == "Polygon" else
+                          buffered.geoms if buffered.geom_type == "MultiPolygon" else [])
+            body_vertices = []
+            has_holes = any(polygon.interiors for polygon in components)
+            for polygon in components:
+                if polygon.is_empty:
+                    continue
+                # Tk polygons cannot represent holes. Fill a constrained
+                # triangulation, then draw only the real boundary rings.
+                if polygon.interiors:
+                    parts = constrained_delaunay_triangles(polygon).geoms
+                else:
+                    parts = [polygon]
+                if has_holes:
+                    body_outlines.extend(self._pad_vertices(pad, sketch, list(ring.coords))
+                                         for ring in (polygon.exterior, *polygon.interiors))
+                body_vertices.extend(self._pad_vertices(pad, sketch, list(part.exterior.coords)) for part in parts)
+        if isinstance(pad, CustomPad) and not (copper_visible or mask_visible):
+            body_vertices = []
+        apertures = world_paste_shapes(pad) if isinstance(pad, CustomPad) and paste_visible else []
+        if isinstance(pad, CustomPad) and not body_vertices and not apertures:
+            return
         options = {
             "fill": BLUE if preview else TEAL,
             "outline": BLUE if preview else TEAL,
@@ -355,15 +379,18 @@ class SketchCanvas(tk.Canvas):
         }
         if preview:
             options["dash"] = (5, 3)
-        if copper_visible or mask_visible or not isinstance(pad, CustomPad):
-            self.create_polygon(self._clipped(vertices), **options)
+        for body in body_vertices:
+            fill_options = dict(options, outline="", width=0) if body_outlines else options
+            self.create_polygon(self._clipped(body), **fill_options)
+        for ring in body_outlines:
+            self.create_line(self._clipped(ring), fill=options["outline"], width=2, tags=options["tags"])
         if pad.pad_type != "smd" and copper_visible:
             hole = Pad("hole", pad.x, pad.y, pad.drill_width, pad.drill_height,
                        angle=pad.angle, pad_shape="oval")
             opening = self._pad_vertices(hole, sketch, pad_outline(hole))
             self.create_polygon(self._clipped(opening), fill=WORKSPACE, outline=INK, tags=("drill",))
         if isinstance(pad, CustomPad) and paste_visible:
-            for aperture in world_paste_shapes(pad):
+            for aperture in apertures:
                 opening = self._pad_vertices(aperture, sketch, pad_outline(aperture))
                 self.create_polygon(self._clipped(opening), fill="", outline="#b56e00", dash=(3, 3),
                                     tags=("paste-opening",))
@@ -413,6 +440,8 @@ class SketchCanvas(tk.Canvas):
         index: int | None = None,
         handles: bool = True,
     ) -> None:
+        if not visible_layers(pad.layers, self.hidden_layers):
+            return
         corners = [
             (-pad.width / 2, -pad.height / 2),
             (pad.width / 2, -pad.height / 2),
