@@ -126,7 +126,7 @@ class ReferenceImportGuiTests(_extended.ExtendedGuiTests):
         image = Image.new("RGBA", (80, 60), (24, 55, 87, 109))
         with patch("footprint_sketcher.workspace.read_clipboard_reference", return_value=ClipboardReference(image=image)) as adapter:
             self._button("画像を貼り付け")
-        adapter.assert_called_once_with(self.root)
+        adapter.assert_called_once_with()
         self.assertEqual(tuple(self.app.sketch.pads), pads)
         self.assertEqual(tuple(self.app.sketch.constraints), constraints)
         self.assertEqual(self.app.footprint_name.get(), name)
@@ -264,33 +264,27 @@ class ReferenceImportGuiTests(_extended.ExtendedGuiTests):
             self.assertTrue(tools._confirm_discard())
         ask.assert_not_called()
 
-    def test_clipboard_pdf_uses_viewer_and_keeps_geometry_or_cancels_without_changes(self):
+    def test_clipboard_non_images_do_not_read_text_or_open_files_and_keep_state(self):
         self._geometry_with_copy()
         baseline = self._import_state()
-        pads, constraints = tuple(self.app.sketch.pads), tuple(self.app.sketch.constraints)
-        path = Path(self.temporary.name) / "clipboard.pdf"
-        reference = ClipboardReference(pdf_path=path, name="クリップボードのPDF")
-        with patch("footprint_sketcher.workspace.read_clipboard_reference", return_value=reference), \
-             patch("footprint_sketcher.workspace.select_pdf_reference", return_value=None) as viewer:
-            self._button("画像を貼り付け")
-        viewer.assert_called_once_with(self.root, path)
-        self.assertEqual(self._import_state(), baseline)
-
-        image = Image.new("RGBA", (70, 35), (80, 90, 100, 255))
-        selection = SimpleNamespace(image=image, label="PDF — 1ページ・選択範囲")
-        with patch("footprint_sketcher.workspace.read_clipboard_reference", return_value=reference), \
-             patch("footprint_sketcher.workspace.select_pdf_reference", return_value=selection), \
-             patch("footprint_sketcher.workspace.messagebox.askyesno") as ask:
-            self._button("画像を貼り付け")
-        ask.assert_not_called()
-        self.assertEqual(tuple(self.app.sketch.pads), pads)
-        self.assertEqual(tuple(self.app.sketch.constraints), constraints)
-        self.assertEqual(self.app.footprint_name.get(), baseline[6])
-        self.assertEqual(self.app.tools.project_path, baseline[7])
-        self.assertEqual(self.app.clipboard, baseline[8])
-        self.assertIsNone(self.app.sketch.calibration)
-        self.assertIsNone(self.app.sketch.origin)
-        self.assertIs(self.app.canvas.image, image)
+        for content, text in ((["clipboard.png"], "clipboard.png"),
+                              (["clipboard.jpg"], "clipboard.jpg"),
+                              (["clipboard.pdf"], "clipboard.pdf"),
+                              (None, "clipboard.png"), (None, "clipboard.pdf"),
+                              (None, "https://example.invalid/clipboard.png")):
+            with self.subTest(content=content, text=text), \
+                 patch("footprint_sketcher.clipboard_reference.ImageGrab.grabclipboard", return_value=content), \
+                 patch.object(self.root, "clipboard_get", return_value=text) as clipboard_text, \
+                 patch("footprint_sketcher.workspace.select_pdf_reference") as viewer, \
+                 patch("footprint_sketcher.workspace.filedialog.askopenfilename") as chooser, \
+                 patch.object(Image, "open") as image_open, \
+                 patch.object(Path, "is_file") as is_file, \
+                 patch.object(Path, "open") as file_open:
+                self._button("画像を貼り付け")
+            for access in (clipboard_text, viewer, chooser, image_open, is_file, file_open):
+                access.assert_not_called()
+            self.assertEqual(self._import_state(), baseline)
+            self.assertIn("クリップボード読込失敗", self.app.status.get())
 
     def test_clipboard_image_pixels_and_alpha_survive_project_save_and_reopen(self):
         from footprint_sketcher.persistence import load_project
@@ -339,7 +333,7 @@ class ReferenceImportGuiTests(_extended.ExtendedGuiTests):
         with patch("footprint_sketcher.workspace.read_clipboard_reference", return_value=ClipboardReference(image=image)) as adapter:
             self.app.canvas.event_generate("<Control-Shift-V>", when="tail")
             self._pump()
-        adapter.assert_called_once_with(self.root)
+        adapter.assert_called_once_with()
         self.assertIs(self.app.canvas.image, image)
 
     def test_control_v_still_pastes_pads_without_reading_system_clipboard(self):
