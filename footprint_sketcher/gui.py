@@ -168,6 +168,7 @@ class SketcherApp:
         self.canvas.bind("<Button-1>", self._on_canvas_press)
         self.canvas.bind("<B1-Motion>", self._on_canvas_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_canvas_release)
+        self.canvas.bind("<Button-3>", self._on_secondary_click)
         self.canvas.bind("<Motion>", self._on_canvas_motion)
         self.canvas.bind("<MouseWheel>", self._on_wheel)
         self.canvas.bind("<Button-4>", lambda event: self._zoom_at(1.2, (event.x, event.y)))
@@ -460,6 +461,11 @@ class SketcherApp:
                            selected_indices=[] if drawing_new else sorted(self.selected_indices),
                            preview_pads=self._preview_pads,
                            new_previews=self._paste_previews, guides=self._snap_guides)
+        if self._drag is not None and self._drag["kind"] == "marquee":
+            a = self.canvas.image_to_canvas(self.sketch.mm_to_image(self._drag["start"]))
+            b = self.canvas.image_to_canvas(self.sketch.mm_to_image(self._drag["end"]))
+            self.canvas.create_rectangle(*a, *b, outline=BLUE, width=2, dash=(4, 3),
+                                         tags=("selection-box",))
         self.zoom_label.set(f"{self.canvas.scale * 100:.0f}%")
 
     def _refresh_pad_list(self) -> None:
@@ -658,7 +664,7 @@ class SketcherApp:
         self._clear_preview()
         if self.selected_index is not None:
             self._fill_pad_fields(self.sketch.pads[self.selected_index])
-        self._message("Ctrl+クリックで複数選択。ドラッグで移動、Shiftで水平/垂直に固定できます。")
+        self._message("空白をドラッグで範囲選択。Ctrl+クリックで追加・解除、パッドをドラッグで移動、Shiftで水平/垂直に固定できます。")
         self._refresh()
 
     def _next_pad_number(self, after: str | None = None) -> str:
@@ -894,6 +900,8 @@ class SketcherApp:
                                   "before": Snapshot.capture(self.sketch),
                                   "screen_start": (event.x, event.y)}
                     return
+        previous_selection = set(self.selected_indices)
+        previous_primary = self.selected_index
         self._set_selection(self.selected_indices if hit in self.selected_indices else [hit] if hit is not None else [], hit)
         if self.selected_index is not None:
             pad = self.sketch.pads[self.selected_index]
@@ -904,7 +912,9 @@ class SketcherApp:
                           "screen_start": (event.x, event.y)}
             self._message(f"{len(self.selected_indices)}個を選択。Ctrl+クリックで追加、Shift+ドラッグで水平/垂直移動できます。")
         else:
-            self._drag = None
+            self._drag = {"kind": "marquee", "start": point, "end": point,
+                          "screen_start": (event.x, event.y),
+                          "previous_selection": previous_selection, "previous_primary": previous_primary}
             selection = self.pad_table.selection()
             if selection:
                 self.pad_table.selection_remove(selection)
@@ -990,6 +1000,10 @@ class SketcherApp:
     def _on_canvas_drag(self, event: tk.Event) -> None:
         if self._drag is None:
             return
+        if self._drag["kind"] == "marquee":
+            self._drag["end"] = self._event_mm(event)
+            self._redraw()
+            return
         try:
             if self._drag["kind"] == "move":
                 self._preview_pads = self._move_candidates(self._event_mm(event), event.state)
@@ -1007,6 +1021,20 @@ class SketcherApp:
         if self._drag is None:
             return
         drag = self._drag
+        if drag["kind"] == "marquee":
+            end = self._event_mm(event)
+            if math.dist((event.x, event.y), drag["screen_start"]) >= 3:
+                left, right = sorted((drag["start"][0], end[0]))
+                top, bottom = sorted((drag["start"][1], end[1]))
+                self._set_selection(index for index, pad in enumerate(self.sketch.pads)
+                                    if left <= pad.x <= right and top <= pad.y <= bottom)
+            self._clear_preview()
+            if self.selected_index is not None:
+                self._fill_pad_fields(self.sketch.pads[self.selected_index])
+            self._refresh_pad_list()
+            self._refresh()
+            self._message(f"{len(self.selected_indices)}個を範囲選択しました。Ctrl+クリックで追加・解除できます。")
+            return
         before = drag.get("before", Snapshot.capture(self.sketch))
         replacements = None
         try:
@@ -1114,6 +1142,8 @@ class SketcherApp:
 
     def _cancel_action(self, _event: tk.Event) -> None:
         if self.mode != "idle" or self.calibration_points or self._drag:
+            if self._drag is not None and self._drag["kind"] == "marquee":
+                self._set_selection(self._drag["previous_selection"], self._drag["previous_primary"])
             self._clear_preview()
             self.tool.set("select")
             self.mode = "idle"
@@ -1121,7 +1151,14 @@ class SketcherApp:
             if self.selected_index is not None:
                 self._fill_pad_fields(self.sketch.pads[self.selected_index])
             self._message("操作を取り消しました。")
+            self._refresh_pad_list()
             self._refresh()
+
+    def _on_secondary_click(self, event: tk.Event) -> str | None:
+        if self.mode in ("draw", "pad", "paste") or (self._drag is not None and self._drag["kind"] == "marquee"):
+            self._cancel_action(event)
+            return "break"
+        return None
 
     def export(self) -> None:
         name = self.footprint_name.get()
