@@ -16,6 +16,8 @@
 
 公開ブランチとその到達可能な履歴は匿名化の対象です。GitHubが管理する古いPR参照・コミットのキャッシュや、すでに取得された他人のclone／forkまでの完全な消去を保証するものではありません。GitHub上の内部参照やキャッシュには、GitHub側の対応が必要になる場合があります。
 
+2026年11月23日の再取得確認では、GitHub管理の `refs/pull/1/head` と `refs/pull/2/head` が匿名化前の履歴を参照していました。PR本文・会話本文は匿名化済みですが、旧PR差分を含むGitHub全域からの削除は未完了です。これらの参照は通常のブランチ更新では変更できません。GitHub側の対応が必要で、削除対象となるかはGitHubの判断によります。[GitHubの説明](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)を参照してください。
+
 履歴変更前にcloneした場合は、新しくcloneし直してください。古い履歴をmergeしたりpushしたりすると、除去した情報が戻るおそれがあります。
 
 ## 今後の確認

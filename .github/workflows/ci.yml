@@ -1,0 +1,75 @@
+name: Checks
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Check publication content
+        run: python tools/check_publication.py
+      - name: Compile Python sources
+        run: python -m compileall -q footprint_sketcher tests tools examples/requirements-demo/generate.py
+      - name: Run tests without skips
+        shell: python
+        run: |
+          from pathlib import Path
+          import sys
+          import unittest
+
+          sys.path.insert(0, str(Path.cwd()))
+          suite = unittest.defaultTestLoader.discover("tests")
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          print(f"Tests: {result.testsRun}; skips: {len(result.skipped)}")
+          sys.exit(0 if result.testsRun and result.wasSuccessful() and not result.skipped else 1)
+      - name: Generate and reopen editing sample
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+          import sys
+          from tempfile import TemporaryDirectory
+
+          sys.path.insert(0, str(Path.cwd()))
+          from footprint_sketcher.persistence import load_footprint, load_project, safe_export_document
+
+          with TemporaryDirectory() as temporary:
+              directory = Path(temporary)
+              subprocess.run([sys.executable, "examples/requirements-demo/generate.py", "--out", str(directory)], check=True)
+              name, sketch, image = load_project(directory / "Requirements_Demo.kfsproj")
+              if name != "Requirements_Demo" or len(sketch.pads) != 8 or len(sketch.constraints) != 2 or image is None:
+                  raise AssertionError("Editing sample did not restore its document, constraints and reference image")
+              image.close()
+              footprint = directory / "Requirements_Demo.pretty" / "Requirements_Demo.kicad_mod"
+              imported_name, imported, _ = load_footprint(footprint)
+              if imported_name != name or len(imported.pads) != 8:
+                  raise AssertionError("Generated footprint did not reopen")
+              roundtrip = directory / "roundtrip.pretty"
+              roundtrip.mkdir()
+              reopened_output = safe_export_document(roundtrip, name, sketch)
+              if reopened_output.read_bytes() != footprint.read_bytes():
+                  raise AssertionError("Reopened project did not reproduce its footprint")
+          print("Sample generation and reopening passed")
