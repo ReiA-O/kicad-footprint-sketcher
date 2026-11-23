@@ -609,12 +609,14 @@ class SketcherApp:
         self._refresh()
 
     def begin_placement(self) -> None:
+        previous_number = self.pad_number.get()
         if not self.pad_number.get() or (self.mode == "idle" and self.selected_index is not None
                                         and self.pad_number.get() == self.sketch.pads[self.selected_index].number):
             self.pad_number.set(self._next_pad_number())
         try:
             self._pad_at((0.0, 0.0))
         except ValueError as error:
+            self.pad_number.set(previous_number)
             self._message(str(error), error=True)
             self.tool.set({"draw": self._draw_shape, "pad": "pad", "idle": "select"}.get(self.mode, ""))
             self._width_entry.focus_set()
