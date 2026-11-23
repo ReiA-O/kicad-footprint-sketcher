@@ -405,9 +405,17 @@ class SketcherApp:
         bar.bind("<Configure>", fit)
 
     def _build_controls(self, panel: ttk.Frame) -> None:
-        ttk.Button(panel, text="下絵を開く…", command=self.open_image).grid(
-            row=0, column=0, columnspan=2, sticky="ew"
-        )
+        reference_tools = ttk.Frame(panel)
+        reference_tools.grid(row=0, column=0, columnspan=2, sticky="ew")
+        reference_tools.columnconfigure((0, 1), weight=1)
+        ttk.Button(reference_tools, text="下絵を開く…", command=self.open_image).grid(
+            row=0, column=0, columnspan=2, sticky="ew")
+        ttk.Button(reference_tools, text="画像を貼り付け",
+                   command=lambda: self.tools.paste_reference_from_clipboard()).grid(
+            row=1, column=0, sticky="ew", pady=(5, 0), padx=(0, 3))
+        ttk.Button(reference_tools, text="PDFを切り取る…",
+                   command=lambda: self.tools.open_pdf()).grid(
+            row=1, column=1, sticky="ew", pady=(5, 0), padx=(3, 0))
         self._section(panel, "校正と原点", 1)
         self._method_combo = ttk.Combobox(panel, textvariable=self.calibration_method,
                                          values=(AXIS_METHOD, UNIFORM_METHOD), state="readonly", width=24)

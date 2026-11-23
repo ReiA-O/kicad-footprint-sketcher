@@ -6,7 +6,7 @@ import hashlib
 import math
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog, ttk
+from tkinter import filedialog, messagebox, ttk
 
 from PIL import Image
 
@@ -16,6 +16,8 @@ from .editing import (Snapshot, copy_pads_between_points, point_symmetric_copies
                       line_symmetric_copies, delete_selected_pads)
 from .constraints import Constraint, solve_constraints
 from .layers import locked_content
+from .clipboard_reference import read_clipboard_reference
+from .pdf_viewer import select_pdf_reference
 
 
 KINDS = {
@@ -55,6 +57,7 @@ class EditorTools:
         self._menu()
         self.root.bind("<Delete>", lambda event: app._shortcut(event, self.delete))
         self.root.bind("<Control-s>", lambda event: app._shortcut(event, self.save))
+        self.root.bind("<Control-Shift-V>", lambda event: app._shortcut(event, self.paste_reference_from_clipboard))
         self.root.bind("<Return>", self._finish_key, add="+")
         self.root.protocol("WM_DELETE_WINDOW", self.close)
 
@@ -64,6 +67,7 @@ class EditorTools:
         for name, command in (("新規", self.new), ("プロジェクトを開く…", self.open_project),
                               ("プロジェクトを保存…", self.save), ("KiCadフットプリントを開く…", self.open_footprint),
                               ("図形を残して下絵を追加・差替え…", self.attach_reference),
+                              ("クリップボードから下絵を貼り付け", self.paste_reference_from_clipboard),
                               ("PDFのページ／範囲を下絵に…", self.open_pdf),
                               ("KiCadへ書き出す…", self.app.export)):
             files.add_command(label=name, command=command)
@@ -552,7 +556,7 @@ class EditorTools:
         self.app.canvas.set_image(Image.new("RGBA", (2000, 1400), "white"))
         self.app.image_name.set("下絵なし — mm座標で編集")
 
-    def _loaded(self, name, sketch, image):
+    def _loaded(self, name, sketch, image, *, mark_saved=True):
         self.app.select_tool(); self.app.sketch = sketch
         if image is None:
             image = Image.new("RGBA", (2000, 1400), "white")
@@ -569,7 +573,8 @@ class EditorTools:
         self.app.canvas.set_image(image); self.app.history.clear(); self.app.selected_index = None
         self.app.calibration_points.clear(); self.app.footprint_name.set(name)
         self.fields["reference"].set(sketch.reference); self.fields["doc_value"].set(sketch.value)
-        self._mark_saved()
+        if mark_saved:
+            self._mark_saved()
         self.app._refresh_pad_list(); self.app._refresh()
 
     def new(self):
@@ -626,29 +631,50 @@ class EditorTools:
         app = self.app
         app.select_tool(); app.selected_index = None; app.history.clear()
         app.sketch.calibration = None; app.sketch.origin = None
+        app.distance.set(""); app.vertical_distance.set("")
         app.canvas.set_image(image); app.image_name.set(name)
         app._refresh_pad_list(); app._refresh()
         app._message("図形・拘束のmm座標を保持して下絵を追加しました。新しい下絵を校正し、原点を指定してください。")
 
+    def paste_reference_from_clipboard(self):
+        """Import only on explicit request; pad/text paste uses its existing route."""
+        image = None
+        try:
+            reference = read_clipboard_reference(self.root)
+            if reference.pdf_path is not None:
+                self.open_pdf(keep_geometry=True, path=reference.pdf_path)
+                return
+            image = reference.image
+            if image is None:
+                raise ValueError("クリップボードに下絵にできる画像がありません。")
+            self._attach_image(image, reference.name)
+        except (ValueError, OSError, RuntimeError) as error:
+            self.app._message("クリップボード読込失敗: " + str(error), error=True)
+        finally:
+            if image is not None and image is not self.app.canvas.image:
+                image.close()
+
     def open_pdf(self, *, keep_geometry=False, path=None):
-        from .reference import pdf_page_count, render_pdf_page
         path = path or filedialog.askopenfilename(parent=self.root, title="PDF下絵を開く", filetypes=[("PDF", "*.pdf")])
         if not path: return
+        image = None
         try:
-            pages = pdf_page_count(Path(path))
-            page = simpledialog.askinteger("PDFページ", f"1〜{pages}ページ", minvalue=1, maxvalue=pages, parent=self.root)
-            if page is None: return
-            image = render_pdf_page(Path(path), page-1)
-            text = simpledialog.askstring("PDF範囲", f"画像 {image.width}×{image.height} px。範囲はX,Y,幅,高さpx（空欄は全体）", initialvalue="", parent=self.root)
-            if text is None: return
-            if text.strip(): image = render_pdf_page(Path(path), page-1, crop=tuple(int(v.strip()) for v in text.split(",")))
+            selection = select_pdf_reference(self.root, Path(path))
+            if selection is None: return
+            image = selection.image
             if keep_geometry:
-                self._attach_image(image, f"{Path(path).name} — {page}ページ")
+                self._attach_image(image, selection.label)
                 return
             if not self._confirm_discard(): return
-            self._loaded(self.app.footprint_name.get(), Sketch(), image); self.app.image_name.set(f"{Path(path).name} — {page}ページ")
+            self._loaded(self.app.footprint_name.get(), Sketch(), image, mark_saved=False)
+            self.project_path = None
+            self.app.distance.set(""); self.app.vertical_distance.set("")
+            self.app.image_name.set(selection.label)
             self.app._message("PDFを下絵として表示しました。校正と原点を指定してください。")
         except (ValueError, OSError, RuntimeError) as error: self.app._message("PDF読込失敗: "+str(error), error=True)
+        finally:
+            if image is not None and image is not self.app.canvas.image:
+                image.close()
 
     def close(self):
         if self._confirm_discard(): self.root.destroy()
