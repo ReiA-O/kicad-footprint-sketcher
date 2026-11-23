@@ -616,7 +616,7 @@ class SketcherApp:
             self._pad_at((0.0, 0.0))
         except ValueError as error:
             self._message(str(error), error=True)
-            self.tool.set(self._draw_shape if self.mode == "draw" else "select")
+            self.tool.set({"draw": self._draw_shape, "pad": "pad", "idle": "select"}.get(self.mode, ""))
             self._width_entry.focus_set()
             return
         self.calibration_points.clear()
