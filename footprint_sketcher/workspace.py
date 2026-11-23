@@ -657,10 +657,7 @@ class EditorTools:
         """Import only on explicit request; pad/text paste uses its existing route."""
         image = None
         try:
-            reference = read_clipboard_reference(self.root)
-            if reference.pdf_path is not None:
-                self.open_pdf(keep_geometry=True, path=reference.pdf_path)
-                return
+            reference = read_clipboard_reference()
             image = reference.image
             if image is None:
                 raise ValueError("クリップボードに下絵にできる画像がありません。")
