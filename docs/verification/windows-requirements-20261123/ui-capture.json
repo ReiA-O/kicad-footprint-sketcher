@@ -1,0 +1,24 @@
+{
+  "status": "completed",
+  "method": "Only current process windows via PrintWindow",
+  "captures": [
+    {
+      "method": "Win32 PrintWindow, client only, ownership PID verified",
+      "pid": 47172,
+      "size": [
+        1600,
+        1000
+      ],
+      "file": "requirements-demo-main.png"
+    },
+    {
+      "method": "Win32 PrintWindow, client only, ownership PID verified",
+      "pid": 47172,
+      "size": [
+        900,
+        900
+      ],
+      "file": "requirements-demo-properties.png"
+    }
+  ]
+}

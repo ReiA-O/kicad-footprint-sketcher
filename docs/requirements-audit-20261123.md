@@ -1,6 +1,10 @@
 # 要件と実装の対応監査（2026年11月23日）
 
-**結論：従来の第1段階に明示採用された機能は、静的な対応確認では機能全体の欠落を検出していません。ただし未適用校正点が残る状態で別編集でき、Undoの順序が崩れる不整合を修正中です。本人は今回、後続としていたF01〜F08の確定要件の未実装部分も追加する範囲拡張を明示しました。**
+> 前半の監査表と「次の作業の区分」までは、`580f471`を基準にした当時の記録です。その後の実装凍結時点の対応は、末尾の「今回追加したF01〜F08の実装対応」を参照してください。旧表の未実装・修正中という記載を、現在の実装状況と混同しません。
+
+**最新の結論：今回追加した確定範囲を実装し、Windows154件とKiCad 10.0.7の99出力照合が通過しました。本人の最新手操作・正式採否は未確認です。** [最終の検証記録](verification/windows-requirements-20261123/README.md)。現行文書はGOAL v1.7／要件v1.8で、F01〜F08原文は保持しています。
+
+**当時の結論：従来の第1段階に明示採用された機能は、静的な対応確認では機能全体の欠落を検出していません。ただし未適用校正点が残る状態で別編集でき、Undoの順序が崩れる不整合を修正中です。本人は今回、後続としていたF01〜F08の確定要件の未実装部分も追加する範囲拡張を明示しました。**
 
 ## 監査の基準と今回の決定
 
@@ -107,3 +111,39 @@ GUIのガード修正と回帰試験を別担当が実施中です。未適用�
 | 自動では採用しない部分 | Net-tie、D09-B、未採用R/N/NF全体、T02外部受入値、T03外部変更取込み等。 |
 
 今回の採用決定はGOAL・要件書へ記録しました。実装と再検証は未完であり、旧70件の通過を新範囲へ流用しません。mainへの自己マージは行っていません。
+
+## 今回追加したF01〜F08の実装対応（Windows自動検証済み・本人確認待ち）
+
+2026年11月23日の本人の追加回答に従って実装した対応を、関数・モジュール単位で示します。F01〜F08の原文は変更していません。**今回確定した主要機能の導線と処理を確認し、追加分を含むWindows154件（純粋ロジック120件・GUI34件）は全件通過しました。** KiCad API読戻しも下記の結果を確認しました。本人の操作感・画面／Checker確認・正式採否は、この自動検証の通過とは分けます。
+
+| ID | 今回の実装と参照 | 制限・確認事項 |
+| --- | --- | --- |
+| F01 入出力・再編集 | [persistence.py](../footprint_sketcher/persistence.py)の`load_footprint`／`safe_export_document`がKiCad 10の`20260206`を読込み、基本Pad／Graphicと対応Customを編集し、その他を原文保持します。無編集往復は原文、Reference／Value編集は値トークンを差し替えます。[workspace.py](../footprint_sketcher/workspace.py)の`open_footprint`／`save`／`open_project`が画面の導線です。`save_project`／`load_project`は画像内包`.kfsproj`へ校正・原点・形状・拘束・保持情報を保存復元します。 | D09-Aの範囲です。特殊要素を捨てずに保持し、参照・意味を保全できない形状／名称変更は出力を停止します。Cu輪郭を直接Pasteにも用いる外来Customなどは保持のみです。全KiCad要素の編集、外部変更の自動取込みは対応しません。 |
+| F02 下絵・校正・原点 | [reference.py](../footprint_sketcher/reference.py)の`render_pdf_page`とworkspace.pyの`open_pdf`でページ／整数px範囲を指定します。`attach_reference`／`_attach_image`はPNG／JPEG／PDFを既存図形へ追加・差替えし、図形・拘束のmm座標を保持します。[model.py](../footprint_sketcher/model.py)の`Sketch.set_origin`と[gui.py](../footprint_sketcher/gui.py)の`apply_calibration`／`_set_origin`で再校正と初回原点指定を扱います。 | 下絵差替えで校正・原点をリセットし、再指定します。初回原点指定で既存mm図形を動かしません。元PDFそのものではなく、選択した下絵画像をプロジェクトへ内包します。OCR・下絵の回転／鏡映／せん断／台形補正は追加していません。 |
+| F03 寸法・幾何拘束 | [constraints.py](../footprint_sketcher/constraints.py)の`Constraint`／`solve_constraints`が位置・寸法・距離・間隔・角度・R、一致・水平・垂直・対称・等寸法・固定を保持します。workspace.pyの`add_constraint`／`update_constraint`／`remove_constraints`／`constrain`／`refresh`が追加・変更・解除・編集後の追従・状態表示を担います。 | T01-Bの基本セットを独自NumPy方式で実装。円の幅／高さは等径、R拘束は実半径です。線の幅は実長で等長に対応し、CustomはX・Y・角度の3自由度に限定します。矛盾時は直前形状を復元し、未解決拘束の読込・保存・書出しは停止します。一般CADの拘束全体を実装したものではなく、T02は未決です。 |
+| F04 四角・角丸 | 従来の矩形／角丸パッド・フィレットに加え、[graphics.py](../footprint_sketcher/graphics.py)の`Graphic`／`graphic_from_points`／`render_graphic`とworkspace.pyの`begin_graphic`／`press`／`release`／`finish_polygon`で矩形・角丸・線・円・円弧・閉じた多角形を作図します。gui.pyの`apply_selected`で円の片方の直径入力へ他方を追従させます。 | 円弧の一直線3点、自己交差多角形などを拒否します。Custom全体のW/H・全体R・四隅リサイズは非対応で、合体前にUndoして元形状を編集します。選択角フィレットは継続して対応します。 |
+| F05 複製・基準点コピー・対称 | [editing.py](../footprint_sketcher/editing.py)の`copy_pads_between_points`／`point_symmetric_copies`／`line_symmetric_copies`とworkspace.pyの`pick_point`／`transform`でA→Bコピー、指定中心の点対称、任意のA–B軸の線対称を追加しました。`keep_numbers`で新番号／元番号維持を選べます。 | 所属する面・レイヤー・穴・開口・相対配置を保持します。NPTHの番号は空欄です。F／B面の入替えやコピー内の拘束継承などR10全体を採用したものではありません。 |
+| F06 不要パッド削除 | editing.pyの`delete_selected_pads`とworkspace.pyの`delete`により、メニュー／Deleteで選択対象を削除し、残る端子番号を保持します。参照する拘束は確認後に解除し、残った参照indexを付け替えます。 | 確定した一回の削除はUndo一回で戻します。未適用校正中・配置プレビュー中などには、別の確定編集が混在しないようガードします。 |
+| F07 一体化パッド | [compound.py](../footprint_sketcher/compound.py)の`merge_pads`／`fillet_pad`に加え、`connect_terminals`とworkspace.pyの`connect`で元の複数番号を残す同一ネット用Cu接続を追加しました。接続幅0は元形状のみ、正の幅は一覧順の接続アンカー中心列を丸端Cuで結びます。 | 元パッド・番号・Mask／Pasteを保持し、代表番号を持つCu専用Customを別に追加します。同一ネットかを推定する処理はなく、Net-tieは未採用です。分離したままの形状・点だけの接触・穴のある合成は拒否します。 |
+| F08 レイヤー・mm | model.pyの`Pad`／`_render_pad`、graphics.pyの`render_graphic`、workspace.pyの`pad_options`／`apply_attributes`／`layers_changed`でF／BのCu・Paste・Mask・SilkS・Fab・CrtYd、SMD／PTH／NPTH、丸穴／長穴を扱います。compound.pyの`split_paste_apertures`で通常SMD／Customの元開口を格子分割します。 | 全寸法はmmです。NPTHは空番号・番号欄無効。Mask／Pasteの有無・拡縮、独立開口、レイヤー表示／ロックを追加しました。分割ではCu／Maskと窓間隔を保持し、はみ出しを拒否します。通常SMDはCustomへ変換します。下絵の表示倍率と実寸の精度基準を混同しません。 |
+
+### 既存状態の保全と操作の補足
+
+- パッド開口はフットプリント全体の設定から実効値を解決し、個別の明示0を区別します。新しいパッドとCustomの解決済みPaste開口にも必要な0を明示し、全体設定の意図しない再継承・二重拡縮を防ぎます。形状変更時は出力generatorを自アプリへ変え、元generatorのバージョンは流用しません。穴種別変更では既知の`attr`種別だけを更新し、その他の元フラグを保持します。
+- 新しい数値欄のEnterは状態に応じ、選択済み対象の更新、次の配置設定の検証、拘束の追加／変更、Paste分割などへ反映します。配置中のEnterで既存選択を変更しないこと、円の等径追従、線の等長、Customの自由度を回帰試験へ追加しています。
+- 監査基準時点で見つかった未適用校正点と他編集のUndo順序の不整合には、未適用点の適用／取消しを先に求めるGUIガードと回帰試験を追加し、最終Windows試験に含めて通過しました。角丸描画図形のRは独立した「作図する角丸図形のR」欄へ変更しました。
+- 追加の回帰は[tests/test_extended_gui.py](../tests/test_extended_gui.py)、[tests/test_constraints.py](../tests/test_constraints.py)、[tests/test_persistence.py](../tests/test_persistence.py)、[tests/test_compound.py](../tests/test_compound.py)、[tests/test_graphics_reference.py](../tests/test_graphics_reference.py)等にあります。Windows実行は最終ソースを特定した[実行記録](verification/windows-requirements-20261123/tests.json)で確認します。
+
+### 最終の自動検証結果
+
+検証したローカル`1e0210c1655ff5aa146efb4597837a605c3c613d`でWindows154件が通過し、失敗・エラー・スキップは0件でした。公開アプリコミット`97f5bb000c94468fc910aa62ade47f752efb4f72`と全リポジトリツリー`97ea567fbc1ac4ab3572b309d936b7912b5cd193`が一致します。KiCad 10.0.7で99出力の標準Pad156個・Custom17個・Paste専用開口31個（計204個）とGraphic54個を読み戻し、照合失敗は0件でした。数値差は最大`4.996256657285869e-7 mm`、角度差・比率差は0、輪郭の双方向頂点–辺距離の最大値は`4.966475205121781e-7 mm`でした。PNG／JPEG回帰4出力は初回とバイト一致し、全8パッドの読戻し差は0でした。これらは観測値で、内部の破損検知条件2 nmもT02の受入基準ではありません。
+
+途中の136件での作図設定上書き・テスト文字列／文字コード、144件通過後のNPTH番号読戻し差、154件での作図R欄不具合は、修正後に再検証しました。[途中の実行記録](verification/windows-requirements-20261123/attempts.json)と[最終の検証記録](verification/windows-requirements-20261123/README.md)へ根拠を残しています。旧監査と旧70件の結果は、今回結果の代用にはしていません。
+
+### 今回も残る判断と制限
+
+T01-Bは実装担当の技術判断として採用しました。SolveSpaceのC++連携・ビルド・GPLv3での組込み配布評価は未了です。T02の外部受入精度・性能値とT03の外部変更取込みは引き続き判断待ちです。内部の解法・近似しきい値や将来の読戻し観測値を、T02の受入基準へ読み替えません。
+
+D06-BのNet-tie、D09-Bの全要素編集、R04の下絵自体の回転／鏡映、Redo、一般グリッド、R/N/NF等の提案全体は一括採用していません。実装済みのレイヤー表示／ロックや文書属性等も、その存在からR09全体の採用を導きません。
+
+本人の最新操作感は回答未受領のため、Windowsの「フットプリント 要件補完デモ」の手操作で確認します。標準選択ダイアログを含む全手順は戻り値を指定する自動試験では未確認のため通常の開く／保存から確認し、KiCad画面・Windows CheckerはAPI照合とは別のため新出力をインポートして確認します。所有アプリの撮影は一部ラベルが欠け、目視合格の代わりにしていません。正式採否・mainへのマージ・次段階への移行は未完のままです。
