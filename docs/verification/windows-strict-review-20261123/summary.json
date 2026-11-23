@@ -1,0 +1,140 @@
+{
+  "status": "completed",
+  "tested_local_source": "28d832149979f0431c42054474bb4b01aa5c1946",
+  "published_equivalent_source": "55fc2c0a7819ad664cb33fc4d971599a8ee24746",
+  "identical_repository_tree": "c3100f357a49e1938c128556c343dbd6b3edaa3f",
+  "application_tree": "fb18d8dc1749920e91c6eb34f767dad578f7c31b",
+  "tests_tree": "51137833b173842b46a5ffef408218fbbd39e978",
+  "started_utc": "2026-11-23T02:02:22.643755+00:00",
+  "finished_utc": "2026-11-23T02:04:41.770377+00:00",
+  "windows_tests": 185,
+  "pure_tests": 141,
+  "gui_tests": 44,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "outputs": 148,
+  "physical_pads_and_apertures": 321,
+  "graphics": 54,
+  "compared_counts": {
+    "pad": 231,
+    "graphic": 54,
+    "custom": 27,
+    "paste": 63
+  },
+  "max_differences": {
+    "mm": 4.996256657285869e-07,
+    "degrees": 0.0,
+    "ratio": 0.0,
+    "outline_vertex_edge_mm": 4.966475205121781e-07,
+    "outline_area_mm2": 2.7629406202933637e-06
+  },
+  "python": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "dependencies": {
+    "Pillow": "12.3.0",
+    "Shapely": "2.2.0",
+    "numpy": "2.5.5",
+    "pypdfium2": "5.15.2"
+  },
+  "kicad": "10.0.7",
+  "source_sha256": {
+    "footprint_sketcher/__init__.py": "3c7b89da11fd554fc0421b83046ca29b0b4bd2e6951f3fb2d2847a1e38d106e9",
+    "footprint_sketcher/__main__.py": "7f8160ea54f979f42671aba3ca6a856a9c1de4da9b3b346d67220676a0339288",
+    "footprint_sketcher/canvas.py": "d4a95c8db493a663c2f037bb8b66a275d8dd2cf37c230a02bf68b7f5d60f9bf2",
+    "footprint_sketcher/compound.py": "cd3da6d5f1390b9764df1c302d9890b76ba2fe9e05679375cc64dfcf3d5c14b8",
+    "footprint_sketcher/constraints.py": "b057aa66944c94516b786ae0d1d04d446ed65b36b26d601f1b50ef147c816730",
+    "footprint_sketcher/editing.py": "5eb65df8f94817ad5b59be22f2a45366a1a42301a4cf1ddd5212b4387b2b815f",
+    "footprint_sketcher/graphics.py": "bb6413c9712144541b35b166877839d730ed05b2f0ffe1b985cad524c191d054",
+    "footprint_sketcher/gui.py": "1662a364f75909dd310aa5d61af83638ea350f70f32bf9fbce5e8556e8bab5d4",
+    "footprint_sketcher/interaction.py": "54f85c209c5e7945993df7828e1d51dd07bc6d234b3d5aefaa83d226a6a2440d",
+    "footprint_sketcher/layers.py": "cf1e106d4d67e124d303ac03f9492cec36906d003f942c005774eef3b20f7eae",
+    "footprint_sketcher/model.py": "d7e7f6a24c06fec1b85f2873dbaacc64bf6fce835b2ea8e4074a78bfe28947a1",
+    "footprint_sketcher/persistence.py": "f2c48f05570be458b26e55a0ce141c57bfc7d3bf85ef433ffc65f41a6c24a692",
+    "footprint_sketcher/reference.py": "7966881a7596f29928bea4b9ac748469bfa7810772a50114152177091c3859d8",
+    "footprint_sketcher/workspace.py": "e12f0d9fff616eb19b23a16f0f0a3643c7e8621e8ea6c7af1157c412012a2332"
+  },
+  "test_sha256": {
+    "tests/test_axis_calibration.py": "e266d5b5453e06c679db479462803104da2c5b429c49275e11a3923e5fd2a237",
+    "tests/test_compound.py": "dad88b03807677240b2b34d7d1af50a8bc35a5aba4a4f90c5e95dde05238507b",
+    "tests/test_constraints.py": "cfcfc0bf87fd3b56d99c672a24725dc5c30463ede0346ebd60efb749566a1f3f",
+    "tests/test_editing.py": "cb53ce1620aed7b45069768bcf6999de2796a4993599ccaf341861ab9b9a01c1",
+    "tests/test_export_angle.py": "716b61c222faf50a00c3b94e1ed02c4b70526f93af42b26ab2ac5145e5607497",
+    "tests/test_extended_gui.py": "14b5ceee241dccdea7af40f5dcb0af2e5a29052503400c163036a32cdb630a58",
+    "tests/test_graphics_reference.py": "cb38923aded4dbc6d68c3b27f31f537db0a0fb1591a08a30e08f6e0550128215",
+    "tests/test_gui_interactions.py": "5e0aaf97b12453f5b81bd57b3bbb9394d849d98fa5c0c2424312d5213a40be27",
+    "tests/test_interaction.py": "3dd3a5fcf4798daceef4cf481c150484c08238e75942a0798b11ccd81ab85a95",
+    "tests/test_layers.py": "e77dee5a71e3c163b7903c31790bcf72e3e8f21cb6891a50cdaed8e412e6b72d",
+    "tests/test_persistence.py": "074e19204bef906295943e256c1df7cc7dbe623d691325825979de15fddb4809"
+  },
+  "archive_sha256": "b2c1cd5d405bcf149988ff2da1eb502a1be99e2a0aa5c3eba1df78bfb3af2993",
+  "archive_bytes": 531731,
+  "raw_windows_archive_sha256": "df87ef273e1fb063feb4fa2a601f4f2eb94b6e3ce60a2c060568ba14fc059a00",
+  "png_jpeg_baseline_outputs": [
+    {
+      "file": "JPEG-arbitrary.pretty/Stage1_SMD_Demo.kicad_mod",
+      "sha256": "a9ba99f5d2c4e9bb3c2fc930ecd0820b75ac350a454337d708c0c3f102b19c28",
+      "identical_to_initial": true
+    },
+    {
+      "file": "JPEG-center.pretty/Stage1_SMD_Demo.kicad_mod",
+      "sha256": "bb9a748df252516aecfbba3830d4daaabcb227f09ca209cc5264f71e6a6cc519",
+      "identical_to_initial": true
+    },
+    {
+      "file": "PNG-arbitrary.pretty/Stage1_SMD_Demo.kicad_mod",
+      "sha256": "a9ba99f5d2c4e9bb3c2fc930ecd0820b75ac350a454337d708c0c3f102b19c28",
+      "identical_to_initial": true
+    },
+    {
+      "file": "PNG-center.pretty/Stage1_SMD_Demo.kicad_mod",
+      "sha256": "bb9a748df252516aecfbba3830d4daaabcb227f09ca209cc5264f71e6a6cc519",
+      "identical_to_initial": true
+    }
+  ],
+  "regression_pad_differences_zero": true,
+  "ownership": {
+    "mode": "verify",
+    "status": "completed",
+    "commit": "28d832149979f0431c42054474bb4b01aa5c1946",
+    "classification": [
+      "編集可能: Reference（文字値、他属性は保持）",
+      "編集可能: Value（文字値、他属性は保持）",
+      "保持のみ: property（未対応の要素）",
+      "保持のみ: property（未対応の要素）",
+      "保持のみ: property（未対応の要素）",
+      "保持のみ: attr（未対応の要素）",
+      "保持のみ: duplicate_pad_numbers_are_jumpers（未対応の要素）",
+      "編集可能: pad 1",
+      "保持のみ: embedded_fonts（未対応の要素）"
+    ],
+    "blocked_geometry": [],
+    "external_uuid_reset_rejected": "開口の所有情報の識別子が重複または欠落しています。",
+    "kicad_resave_preserves_ownership": true,
+    "logical_entities": 1,
+    "apertures": 2,
+    "moved_mm": [
+      5,
+      2
+    ],
+    "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\strict-run-20261123T020222Z-8ea8e6c9\\ownership-moved.pretty\\Ownership_Explicit.kicad_mod",
+    "sha256": "48ddd0ed8d8a5136d08a7f25e53707d11e2b1581e381609b2bb7431ef98989fa"
+  },
+  "gui": {
+    "pid": 52944,
+    "commit": "28d832149979f0431c42054474bb4b01aa5c1946",
+    "title": "KiCad Footprint Sketcher - 自己レビュー修正版・操作デモ",
+    "mapped": true,
+    "canvas": [
+      1229,
+      614
+    ],
+    "logical_entities": 8,
+    "constraints": 2,
+    "project": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\Requirements_Demo.kfsproj"
+  },
+  "independent_cases": 600,
+  "manual_latest_gui_confirmed": false,
+  "windows_checker_confirmed": false,
+  "measurement_note": "Readback observations/internal corruption guards; T02 acceptance precision/performance remain undecided."
+}
