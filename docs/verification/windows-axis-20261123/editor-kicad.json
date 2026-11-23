@@ -1,0 +1,358 @@
+{
+  "status": "completed",
+  "version": "10.0.7",
+  "timestamp_utc": "2026-11-22T17:24:10.280068+00:00",
+  "source_commit": "729e7027788cabebf2283c7e0676880e3025beb6",
+  "cases": [
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+      "file": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T172241Z-9ffb863d\\case-1.pretty\\Editor_Case_1.kicad_mod",
+      "pads": [
+        {
+          "number": "1",
+          "x": -1.972222,
+          "y": -0.458333,
+          "width": 1.073557,
+          "height": 3.975801,
+          "angle": 30.0,
+          "radius": 0.25,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 2.222222215131353e-07,
+            "y": 3.3333333171459145e-07,
+            "width": -1.585149860261481e-07,
+            "height": 4.494424250545137e-07,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        }
+      ]
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_continuous_creation_skips_used_numbers_without_renumbering_existing_pads",
+      "file": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T172241Z-9ffb863d\\case-2.pretty\\Editor_Case_2.kicad_mod",
+      "pads": [
+        {
+          "number": "3",
+          "x": -4.0,
+          "y": -2.5,
+          "width": 2.0,
+          "height": 1.0,
+          "angle": 0.0,
+          "radius": 0.0,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        },
+        {
+          "number": "1",
+          "x": -1.0,
+          "y": -2.5,
+          "width": 2.0,
+          "height": 1.0,
+          "angle": 0.0,
+          "radius": 0.0,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        },
+        {
+          "number": "2",
+          "x": 2.0,
+          "y": 1.5,
+          "width": 2.0,
+          "height": 1.0,
+          "angle": 0.0,
+          "radius": 0.0,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        }
+      ]
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_drag_creation_stays_in_tool_and_advances_only_the_next_number",
+      "file": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T172241Z-9ffb863d\\case-3.pretty\\Editor_Case_3.kicad_mod",
+      "pads": [
+        {
+          "number": "1",
+          "x": -4.0,
+          "y": -2.5,
+          "width": 1.232051,
+          "height": 1.866025,
+          "angle": 30.0,
+          "radius": 0.0,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 1.9243112259204054e-07,
+            "height": -4.037844385518241e-07,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        },
+        {
+          "number": "2",
+          "x": -1.0,
+          "y": -2.5,
+          "width": 1.232051,
+          "height": 1.866025,
+          "angle": 30.0,
+          "radius": 0.0,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 1.9243112259204054e-07,
+            "height": -4.037844385518241e-07,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        },
+        {
+          "number": "3",
+          "x": 2.0,
+          "y": 1.5,
+          "width": 1.232051,
+          "height": 1.866025,
+          "angle": 30.0,
+          "radius": 0.25,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 1.9243112259204054e-07,
+            "height": -4.037844385518241e-07,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        },
+        {
+          "number": "4",
+          "x": 5.0,
+          "y": 1.5,
+          "width": 1.232051,
+          "height": 1.866025,
+          "angle": 30.0,
+          "radius": 0.25,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 1.9243112259204054e-07,
+            "height": -4.037844385518241e-07,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        }
+      ]
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_drag_shapes_move_rotate_all_resize_handles_and_apply_from_table",
+      "file": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T172241Z-9ffb863d\\case-4.pretty\\Editor_Case_4.kicad_mod",
+      "pads": [
+        {
+          "number": "R1",
+          "x": -3.0,
+          "y": -1.0,
+          "width": 1.8,
+          "height": 0.8,
+          "angle": 0.0,
+          "radius": 0.0,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        },
+        {
+          "number": "2",
+          "x": 1.125,
+          "y": 0.858333,
+          "width": 0.392234,
+          "height": 1.189989,
+          "angle": 30.0,
+          "radius": 0.196117,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 2.220446049250313e-16,
+            "y": -3.333333331578814e-07,
+            "width": 4.732359491499416e-07,
+            "height": -1.0667625516269652e-07,
+            "radius": 2.366179745749708e-07
+          },
+          "angle_difference": 0.0
+        },
+        {
+          "number": "1",
+          "x": 1.0,
+          "y": 3.0,
+          "width": 1.414214,
+          "height": 1.414214,
+          "angle": 45.0,
+          "radius": 0.0,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 4.376269049366499e-07,
+            "height": 4.376269049366499e-07,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        }
+      ]
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_four_point_axis_lock_and_view_changes_preserve_anisotropic_calibration",
+      "file": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T172241Z-9ffb863d\\case-5.pretty\\Editor_Case_5.kicad_mod",
+      "pads": [
+        {
+          "number": "1",
+          "x": -3.0,
+          "y": -1.0,
+          "width": 2.0,
+          "height": 2.0,
+          "angle": 0.0,
+          "radius": 0.0,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        }
+      ]
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_selection_and_cancelled_drag_previews_never_change_saved_geometry",
+      "file": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T172241Z-9ffb863d\\case-6.pretty\\Editor_Case_6.kicad_mod",
+      "pads": [
+        {
+          "number": "1",
+          "x": -1.0,
+          "y": 0.0,
+          "width": 2.0,
+          "height": 2.0,
+          "angle": 0.0,
+          "radius": 0.25,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        }
+      ]
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_zoom_pan_during_calibration_and_display_changes_preserve_export",
+      "file": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\editor-run-20261122T172241Z-9ffb863d\\case-7.pretty\\Editor_Case_7.kicad_mod",
+      "pads": [
+        {
+          "number": "1",
+          "x": -3.0,
+          "y": -1.0,
+          "width": 2.0,
+          "height": 2.0,
+          "angle": 0.0,
+          "radius": 0.0,
+          "layers": [
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "difference_from_model": {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "radius": 0.0
+          },
+          "angle_difference": 0.0
+        }
+      ]
+    }
+  ]
+}
