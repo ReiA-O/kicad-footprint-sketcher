@@ -1,0 +1,62 @@
+(footprint "NE555_SOIC8_Practice"
+  (version 20260206)
+  (generator "kicad_footprint_sketcher")
+  (layer "F.Cu")
+  (property "Reference" "REF**"
+    (at 0 0 0) (layer "F.SilkS") (hide yes)
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+  (property "Value" "NE555_SOIC8_Practice"
+    (at 0 0 0) (layer "F.Fab") (hide yes)
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
+  (attr smd)
+  (pad "4" smd roundrect
+    (at -2.7135288613500657 1.910574264750076 0)
+    (size 1.55 0.6)
+    (layers "F.Cu" "F.Paste" "F.Mask")
+    (roundrect_rratio 0.08333333333333334)
+  )
+  (pad "3" smd roundrect
+    (at -2.7135288613500657 0.6355567981145447 0)
+    (size 1.55 0.6)
+    (layers "F.Cu" "F.Paste" "F.Mask")
+    (roundrect_rratio 0.08333333333333334)
+  )
+  (pad "5" smd roundrect
+    (at 2.6875631156177495 1.910574264750076 0)
+    (size 1.55 0.6)
+    (layers "F.Cu" "F.Paste" "F.Mask")
+    (roundrect_rratio 0.08333333333333334)
+  )
+  (pad "6" smd roundrect
+    (at 2.6875631156177495 0.6355567981145447 0)
+    (size 1.55 0.6)
+    (layers "F.Cu" "F.Paste" "F.Mask")
+    (roundrect_rratio 0.08333333333333334)
+  )
+  (pad "1" smd roundrect
+    (at -2.7135288613500657 -1.910574264750076 0)
+    (size 1.55 0.6)
+    (layers "F.Cu" "F.Paste" "F.Mask")
+    (roundrect_rratio 0.08333333333333334)
+  )
+  (pad "2" smd roundrect
+    (at -2.7135288613500657 -0.6355567981145447 0)
+    (size 1.55 0.6)
+    (layers "F.Cu" "F.Paste" "F.Mask")
+    (roundrect_rratio 0.08333333333333334)
+  )
+  (pad "8" smd roundrect
+    (at 2.6875631156177495 -1.910574264750076 0)
+    (size 1.55 0.6)
+    (layers "F.Cu" "F.Paste" "F.Mask")
+    (roundrect_rratio 0.08333333333333334)
+  )
+  (pad "7" smd roundrect
+    (at 2.6875631156177495 -0.6355567981145447 0)
+    (size 1.55 0.6)
+    (layers "F.Cu" "F.Paste" "F.Mask")
+    (roundrect_rratio 0.08333333333333334)
+  )
+)

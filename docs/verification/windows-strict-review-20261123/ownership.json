@@ -1,0 +1,47 @@
+{
+  "prepare": {
+    "mode": "prepare",
+    "status": "completed",
+    "commit": "28d832149979f0431c42054474bb4b01aa5c1946",
+    "unowned_move_blocked": true,
+    "explicit_apertures": 2,
+    "independent_retained": true,
+    "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\strict-run-20261123T020222Z-8ea8e6c9\\ownership-original.pretty\\Ownership_Explicit.kicad_mod",
+    "sha256": "f30e7781f09ceadd4209189c8acd9eb4c81081172d239bfb6ef554f031ed79c4"
+  },
+  "kicad": {
+    "status": "completed",
+    "version": "10.0.7",
+    "preserve_uuid": true,
+    "explicit_physical_pads": 3,
+    "independent_physical_pads": 4,
+    "kicad_saved": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\strict-run-20261123T020222Z-8ea8e6c9\\ownership-kicad.pretty\\Ownership_Explicit.kicad_mod"
+  },
+  "verify": {
+    "mode": "verify",
+    "status": "completed",
+    "commit": "28d832149979f0431c42054474bb4b01aa5c1946",
+    "classification": [
+      "編集可能: Reference（文字値、他属性は保持）",
+      "編集可能: Value（文字値、他属性は保持）",
+      "保持のみ: property（未対応の要素）",
+      "保持のみ: property（未対応の要素）",
+      "保持のみ: property（未対応の要素）",
+      "保持のみ: attr（未対応の要素）",
+      "保持のみ: duplicate_pad_numbers_are_jumpers（未対応の要素）",
+      "編集可能: pad 1",
+      "保持のみ: embedded_fonts（未対応の要素）"
+    ],
+    "blocked_geometry": [],
+    "external_uuid_reset_rejected": "開口の所有情報の識別子が重複または欠落しています。",
+    "kicad_resave_preserves_ownership": true,
+    "logical_entities": 1,
+    "apertures": 2,
+    "moved_mm": [
+      5,
+      2
+    ],
+    "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\strict-run-20261123T020222Z-8ea8e6c9\\ownership-moved.pretty\\Ownership_Explicit.kicad_mod",
+    "sha256": "48ddd0ed8d8a5136d08a7f25e53707d11e2b1581e381609b2bb7431ef98989fa"
+  }
+}

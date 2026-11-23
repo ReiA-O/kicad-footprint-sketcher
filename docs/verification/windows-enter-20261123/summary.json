@@ -1,0 +1,186 @@
+{
+  "source_commit": "29d212c8684ef7b1b4a68b89ac5da9bc920a4bd3",
+  "started_utc": "2026-11-22T19:12:48.811659+00:00",
+  "finished_utc": "2026-11-22T19:13:50.684628+00:00",
+  "tests": 70,
+  "outputs": 46,
+  "logical_pads": 89,
+  "physical_entities": 127,
+  "custom_copper_entities": 18,
+  "paste_apertures": 38,
+  "max_abs_scalar_mm": 4.845413263954157e-07,
+  "max_abs_angle": 0.0,
+  "max_outline_vertex_edge_mm": 4.966475205121781e-07,
+  "fillet_example": "Editor_Case_3.kicad_mod",
+  "archive_sha256": "2548bc0197a3bf6d3d15cca7e2cda4606f09858e0c7303ce590fbd99d39c2284",
+  "baseline_four_outputs_identical": true,
+  "regression_pad_differences_zero": true,
+  "gui": {
+    "commit": "29d212c8684ef7b1b4a68b89ac5da9bc920a4bd3",
+    "title": "KiCad Footprint Sketcher - NE555（Enter反映対応）",
+    "image": "NE555-SOIC8-land-pattern.png  ·  740 × 500 px",
+    "mapped": true,
+    "canvas_size": [
+      1229,
+      629
+    ],
+    "scale": 1.0,
+    "number_font": {
+      "family": "Yu Gothic UI",
+      "size": 16,
+      "weight": "bold",
+      "slant": "roman",
+      "underline": 0,
+      "overstrike": 0
+    }
+  },
+  "label_render": {
+    "observations": 694,
+    "center_cross_overlaps": 0,
+    "minimum_center_distance_px": 11.672617529928752,
+    "colors_seen": [
+      "#ffffff"
+    ],
+    "font": {
+      "family": "Yu Gothic UI",
+      "size": 16,
+      "weight": "bold",
+      "slant": "roman",
+      "underline": 0,
+      "overstrike": 0
+    },
+    "samples": [
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          434.0,
+          284.0
+        ],
+        "text_and_outline_bbox_px": [
+          442,
+          243,
+          454,
+          275
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          434.0,
+          284.0
+        ],
+        "text_and_outline_bbox_px": [
+          442,
+          243,
+          454,
+          275
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          434.0,
+          284.0
+        ],
+        "text_and_outline_bbox_px": [
+          442,
+          243,
+          454,
+          275
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          451.0,
+          275.0
+        ],
+        "text_and_outline_bbox_px": [
+          459,
+          234,
+          471,
+          266
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          451.0,
+          275.0
+        ],
+        "text_and_outline_bbox_px": [
+          459,
+          234,
+          471,
+          266
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          523.0,
+          293.0
+        ],
+        "text_and_outline_bbox_px": [
+          531,
+          252,
+          543,
+          284
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          516.0,
+          289.50000000000006
+        ],
+        "text_and_outline_bbox_px": [
+          524,
+          249,
+          536,
+          281
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      },
+      {
+        "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+        "number": "1",
+        "center_px": [
+          513.0,
+          284.0
+        ],
+        "text_and_outline_bbox_px": [
+          521,
+          243,
+          533,
+          275
+        ],
+        "center_cross_overlapped": false,
+        "fill": "#ffffff"
+      }
+    ]
+  },
+  "published_equivalent_source_commit": "fcd829ecc0a717648d810e2b1ae921724759908d",
+  "identical_source_repository_tree": "9b6f590fc678386da63aa624d4841e240e884d21",
+  "owner_output_sha256": "5115c8367cb2f9dc158f2bc111c2a7c7d08a30bafe8b0a64ae1df265f8f26427"
+}

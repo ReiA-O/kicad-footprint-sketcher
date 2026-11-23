@@ -1,0 +1,634 @@
+{
+  "status": "completed",
+  "started_utc": "2026-11-22T20:10:23.385294+00:00",
+  "run": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2",
+  "python": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "commit": "1e0210c1655ff5aa146efb4597837a605c3c613d",
+  "dependencies": {
+    "Pillow": "12.3.0",
+    "Shapely": "2.2.0",
+    "numpy": "2.5.5",
+    "pypdfium2": "5.15.2"
+  },
+  "source_sha256": {
+    "footprint_sketcher/__init__.py": "3c7b89da11fd554fc0421b83046ca29b0b4bd2e6951f3fb2d2847a1e38d106e9",
+    "footprint_sketcher/__main__.py": "7f8160ea54f979f42671aba3ca6a856a9c1de4da9b3b346d67220676a0339288",
+    "footprint_sketcher/canvas.py": "b487ee0e4b1e0ae6937eb34e440ef82cc1f359366d6e29e600bf98ee87788d23",
+    "footprint_sketcher/compound.py": "87f441d029aa94e2cb3f7429700a8a0b414bd1b19a6fc9c871a608d2100c3069",
+    "footprint_sketcher/constraints.py": "eb8effa27a665b4d22121666ac0ecfce8ac1557069b8da1cac85bd8ad32fddd9",
+    "footprint_sketcher/editing.py": "5eb65df8f94817ad5b59be22f2a45366a1a42301a4cf1ddd5212b4387b2b815f",
+    "footprint_sketcher/graphics.py": "bb6413c9712144541b35b166877839d730ed05b2f0ffe1b985cad524c191d054",
+    "footprint_sketcher/gui.py": "b0113df50be4ac9838a6407898d3248561d0a3224f7a9f2cc0df6ca0aba544fe",
+    "footprint_sketcher/interaction.py": "54f85c209c5e7945993df7828e1d51dd07bc6d234b3d5aefaa83d226a6a2440d",
+    "footprint_sketcher/model.py": "82b9aa9fc8060efa6379723e1311ab580d63c1f03bb37d3c92f6ba90ddaf1e16",
+    "footprint_sketcher/persistence.py": "a5a29c8000d2faf5c2eb96aa70210032e1393e0a35e69320ecc837077471d519",
+    "footprint_sketcher/reference.py": "7966881a7596f29928bea4b9ac748469bfa7810772a50114152177091c3859d8",
+    "footprint_sketcher/workspace.py": "aa8fa12e9c0957f37541f9b6669ed219f0901a22a60ac0fe1984defc4c7993ef"
+  },
+  "expected_tests": 154,
+  "tests_run": 154,
+  "failures": 0,
+  "errors": 0,
+  "skipped": [],
+  "finished_utc": "2026-11-22T20:12:29.405000+00:00",
+  "log": "test_image_and_millimeter_roundtrips (test_axis_calibration.AxisCalibrationTests.test_image_and_millimeter_roundtrips) ... ok\ntest_invalid_axis_calibration_keeps_previous_calibration_origin_and_pads (test_axis_calibration.AxisCalibrationTests.test_invalid_axis_calibration_keeps_previous_calibration_origin_and_pads) ... ok\ntest_legacy_calibration_serialization_and_uniform_transform_are_preserved (test_axis_calibration.AxisCalibrationTests.test_legacy_calibration_serialization_and_uniform_transform_are_preserved) ... ok\ntest_nonuniform_scales_transform_each_axis_independently (test_axis_calibration.AxisCalibrationTests.test_nonuniform_scales_transform_each_axis_independently) ... ok\ntest_origin_move_preserves_pad_image_placement_and_dimensions (test_axis_calibration.AxisCalibrationTests.test_origin_move_preserves_pad_image_placement_and_dimensions) ... ok\ntest_pair_locations_do_not_couple_axis_scales (test_axis_calibration.AxisCalibrationTests.test_pair_locations_do_not_couple_axis_scales) ... ok\ntest_reversed_pairs_do_not_reverse_coordinate_axes (test_axis_calibration.AxisCalibrationTests.test_reversed_pairs_do_not_reverse_coordinate_axes) ... ok\ntest_unrepresentable_scales_are_rejected (test_axis_calibration.AxisCalibrationTests.test_unrepresentable_scales_are_rejected) ... ok\ntest_adjacent_fillet_uses_remaining_straight_edge_length (test_compound.CompoundTests.test_adjacent_fillet_uses_remaining_straight_edge_length) ... ok\ntest_anchor_is_in_copper_even_when_bounding_box_center_is_outside (test_compound.CompoundTests.test_anchor_is_in_copper_even_when_bounding_box_center_is_outside) ... ok\ntest_anchor_rebases_when_fillet_removes_previous_connection_point (test_compound.CompoundTests.test_anchor_rebases_when_fillet_removes_previous_connection_point) ... ok\ntest_back_side_merge_and_fillet_preserve_mask_layers_and_raw_paste_metadata (test_compound.CompoundTests.test_back_side_merge_and_fillet_preserve_mask_layers_and_raw_paste_metadata) ... ok\ntest_bridge_path_follows_selection_order_and_invalid_widths_are_atomic (test_compound.CompoundTests.test_bridge_path_follows_selection_order_and_invalid_widths_are_atomic) ... ok\ntest_bridge_width_connects_separated_terminals_as_one_copper_piece_only (test_compound.CompoundTests.test_bridge_width_connects_separated_terminals_as_one_copper_piece_only) ... ok\ntest_circle_and_oval_use_curved_copper_and_have_no_sharp_corners (test_compound.CompoundTests.test_circle_and_oval_use_curved_copper_and_have_no_sharp_corners) ... ok\ntest_clockwise_and_counterclockwise_fillet_have_same_geometry (test_compound.CompoundTests.test_clockwise_and_counterclockwise_fillet_have_same_geometry) ... ok\ntest_concave_fillet_adds_copper_and_preserves_other_edges (test_compound.CompoundTests.test_concave_fillet_adds_copper_and_preserves_other_edges) ... ok\ntest_connect_terminals_adds_only_copper_and_keeps_all_source_numbers_and_openings (test_compound.CompoundTests.test_connect_terminals_adds_only_copper_and_keeps_all_source_numbers_and_openings) ... ok\ntest_convex_fillet_changes_only_one_corner_and_keeps_paste (test_compound.CompoundTests.test_convex_fillet_changes_only_one_corner_and_keeps_paste) ... ok\ntest_custom_fillet_cannot_bypass_existing_nonzero_radius_minimum (test_compound.CompoundTests.test_custom_fillet_cannot_bypass_existing_nonzero_radius_minimum) ... ok\ntest_direct_split_rejects_holes_graphics_missing_paste_and_protrusions_atomically (test_compound.CompoundTests.test_direct_split_rejects_holes_graphics_missing_paste_and_protrusions_atomically) ... ok\ntest_disconnected_point_touching_and_holed_unions_are_rejected_atomically (test_compound.CompoundTests.test_disconnected_point_touching_and_holed_unions_are_rejected_atomically) ... ok\ntest_incompatible_layers_margins_graphics_and_holes_are_rejected_without_mutation (test_compound.CompoundTests.test_incompatible_layers_margins_graphics_and_holes_are_rejected_without_mutation) ... ok\ntest_invalid_corner_radius_and_excessive_radius_are_rejected_atomically (test_compound.CompoundTests.test_invalid_corner_radius_and_excessive_radius_are_rejected_atomically) ... ok\ntest_invalid_or_protruding_paste_split_is_atomic_instead_of_resizing (test_compound.CompoundTests.test_invalid_or_protruding_paste_split_is_atomic_instead_of_resizing) ... ok\ntest_l_union_has_one_terminal_and_exact_rectangular_union (test_compound.CompoundTests.test_l_union_has_one_terminal_and_exact_rectangular_union) ... ok\ntest_local_world_roundtrip_and_actual_concave_hit_testing (test_compound.CompoundTests.test_local_world_roundtrip_and_actual_concave_hit_testing) ... ok\ntest_move_rotate_and_number_replace_keep_compound_data_and_transform_apertures (test_compound.CompoundTests.test_move_rotate_and_number_replace_keep_compound_data_and_transform_apertures) ... ok\ntest_nested_union_flattens_original_apertures (test_compound.CompoundTests.test_nested_union_flattens_original_apertures) ... ok\ntest_parent_paste_adjustment_updates_export_once_and_survives_fillet (test_compound.CompoundTests.test_parent_paste_adjustment_updates_export_once_and_survives_fillet) ... ok\ntest_parent_paste_validation_checks_each_window_and_split_keeps_requested_gap (test_compound.CompoundTests.test_parent_paste_validation_checks_each_window_and_split_keeps_requested_gap) ... ok\ntest_paste_offsets_use_per_side_ratio_and_roundrect_radius_rules_once (test_compound.CompoundTests.test_paste_offsets_use_per_side_ratio_and_roundrect_radius_rules_once) ... ok\ntest_raw_aperture_flag_resolves_margin_once_and_keeps_source_snapshot (test_compound.CompoundTests.test_raw_aperture_flag_resolves_margin_once_and_keeps_source_snapshot) ... ok\ntest_regular_smd_roundrect_splits_directly_without_changing_world_copper_or_mask (test_compound.CompoundTests.test_regular_smd_roundrect_splits_directly_without_changing_world_copper_or_mask) ... ok\ntest_roundrect_sampling_is_not_exposed_as_selectable_sharp_corners (test_compound.CompoundTests.test_roundrect_sampling_is_not_exposed_as_selectable_sharp_corners) ... ok\ntest_sampled_arc_respects_declared_sagitta_bound (test_compound.CompoundTests.test_sampled_arc_respects_declared_sagitta_bound) ... ok\ntest_split_preserves_copper_metadata_and_exact_local_gaps_for_rotated_aperture (test_compound.CompoundTests.test_split_preserves_copper_metadata_and_exact_local_gaps_for_rotated_aperture) ... ok\ntest_unrepresentable_dimensions_and_invalid_custom_geometry_are_rejected (test_compound.CompoundTests.test_unrepresentable_dimensions_and_invalid_custom_geometry_are_rejected) ... ok\ntest_angles_are_periodic_and_unedited_records_keep_their_original_angle (test_constraints.ConstraintTests.test_angles_are_periodic_and_unedited_records_keep_their_original_angle) ... ok\ntest_circle_radius_dimension_means_half_the_diameter_and_conflicts_are_atomic (test_constraints.ConstraintTests.test_circle_radius_dimension_means_half_the_diameter_and_conflicts_are_atomic) ... ok\ntest_circle_width_driver_preserves_exact_equal_diameters_and_intrinsic_freedom (test_constraints.ConstraintTests.test_circle_width_driver_preserves_exact_equal_diameters_and_intrinsic_freedom) ... ok\ntest_coincident_distance_seed_respects_fixed_and_horizontal_vertical_relations (test_constraints.ConstraintTests.test_coincident_distance_seed_respects_fixed_and_horizontal_vertical_relations) ... ok\ntest_constraint_removal_releases_the_relationship_without_implicit_links (test_constraints.ConstraintTests.test_constraint_removal_releases_the_relationship_without_implicit_links) ... ok\ntest_contradictions_name_the_constraints_and_never_mutate_inputs (test_constraints.ConstraintTests.test_contradictions_name_the_constraints_and_never_mutate_inputs) ... ok\ntest_custom_only_exposes_position_and_angle_and_retains_copper_and_paste (test_constraints.ConstraintTests.test_custom_only_exposes_position_and_angle_and_retains_copper_and_paste) ... ok\ntest_distance_keeps_the_initial_direction_and_midpoint_nearby (test_constraints.ConstraintTests.test_distance_keeps_the_initial_direction_and_midpoint_nearby) ... ok\ntest_each_scalar_dimension_and_fixed_snapshot_fully_constrain_one_pad (test_constraints.ConstraintTests.test_each_scalar_dimension_and_fixed_snapshot_fully_constrain_one_pad) ... ok\ntest_invalid_inputs_and_extreme_values_fail_atomically_with_identifiers (test_constraints.ConstraintTests.test_invalid_inputs_and_extreme_values_fail_atomically_with_identifiers) ... ok\ntest_line_equal_width_is_equal_length_and_height_radius_remain_constants (test_constraints.ConstraintTests.test_line_equal_width_is_equal_length_and_height_radius_remain_constants) ... ok\ntest_line_symmetry_and_equal_size_follow_position_and_size_drivers (test_constraints.ConstraintTests.test_line_symmetry_and_equal_size_follow_position_and_size_drivers) ... ok\ntest_non_round_shapes_do_not_expose_unused_radius_but_roundrect_keeps_it (test_constraints.ConstraintTests.test_non_round_shapes_do_not_expose_unused_radius_but_roundrect_keeps_it) ... ok\ntest_point_symmetry_and_vertical_axis_use_the_specified_point (test_constraints.ConstraintTests.test_point_symmetry_and_vertical_axis_use_the_specified_point) ... ok\ntest_records_roundtrip_json_and_invalid_references_report_the_id (test_constraints.ConstraintTests.test_records_roundtrip_json_and_invalid_references_report_the_id) ... ok\ntest_redundant_relations_do_not_inflate_rank_and_drivers_do_not_fix_the_document (test_constraints.ConstraintTests.test_redundant_relations_do_not_inflate_rank_and_drivers_do_not_fix_the_document) ... ok\ntest_signed_spacing_and_horizontal_relationship_follow_a_drag (test_constraints.ConstraintTests.test_signed_spacing_and_horizontal_relationship_follow_a_drag) ... ok\ntest_two_distances_converge_to_the_nearby_circle_intersection (test_constraints.ConstraintTests.test_two_distances_converge_to_the_nearby_circle_intersection) ... ok\ntest_zero_distance_is_center_coincidence_with_two_independent_relations (test_constraints.ConstraintTests.test_zero_distance_is_center_coincidence_with_two_independent_relations) ... ok\ntest_copy_can_explicitly_preserve_numbers (test_editing.GroupEditingTests.test_copy_can_explicitly_preserve_numbers) ... ok\ntest_copy_preserves_relative_centers_dimensions_and_immutable_clipboard (test_editing.GroupEditingTests.test_copy_preserves_relative_centers_dimensions_and_immutable_clipboard) ... ok\ntest_distribution_sorts_centers_and_fixes_both_extremes (test_editing.GroupEditingTests.test_distribution_sorts_centers_and_fixes_both_extremes) ... ok\ntest_invalid_copy_is_atomic (test_editing.GroupEditingTests.test_invalid_copy_is_atomic) ... ok\ntest_invalid_group_operations_do_not_mutate_originals (test_editing.GroupEditingTests.test_invalid_group_operations_do_not_mutate_originals) ... ok\ntest_last_alignment_uses_selection_order_not_index_or_position_order (test_editing.GroupEditingTests.test_last_alignment_uses_selection_order_not_index_or_position_order) ... ok\ntest_mean_alignment_changes_only_selected_coordinate (test_editing.GroupEditingTests.test_mean_alignment_changes_only_selected_coordinate) ... ok\ntest_vertical_distribution_retains_horizontal_positions (test_editing.GroupEditingTests.test_vertical_distribution_retains_horizontal_positions) ... ok\ntest_both_origin_axes_reflect_rotated_rectangles_and_roundrects (test_editing.MirroredCopyTests.test_both_origin_axes_reflect_rotated_rectangles_and_roundrects) ... ok\ntest_compound_reflection_preserves_fillet_edges_and_original_paste_openings (test_editing.MirroredCopyTests.test_compound_reflection_preserves_fillet_edges_and_original_paste_openings) ... ok\ntest_invalid_axis_empty_and_nonfinite_sources_are_atomic (test_editing.MirroredCopyTests.test_invalid_axis_empty_and_nonfinite_sources_are_atomic) ... ok\ntest_mixed_group_numbers_are_unique_and_doubled_reflection_restores_geometry (test_editing.MirroredCopyTests.test_mixed_group_numbers_are_unique_and_doubled_reflection_restores_geometry) ... ok\ntest_reflected_compound_keeps_selected_corner_fillet_usable (test_editing.MirroredCopyTests.test_reflected_compound_keeps_selected_corner_fillet_usable) ... ok\ntest_all_copy_variants_explicitly_support_keeping_numbers (test_editing.ReferenceCopyAndDeletionTests.test_all_copy_variants_explicitly_support_keeping_numbers) ... ok\ntest_arbitrary_oblique_line_reflects_compound_fillets_paste_and_rotated_roundrect (test_editing.ReferenceCopyAndDeletionTests.test_arbitrary_oblique_line_reflects_compound_fillets_paste_and_rotated_roundrect) ... ok\ntest_axis_direction_does_not_depend_on_vector_length_even_at_float_limits (test_editing.ReferenceCopyAndDeletionTests.test_axis_direction_does_not_depend_on_vector_length_even_at_float_limits) ... ok\ntest_copy_apis_remove_output_uuids_but_keep_and_transform_raw_metadata_snapshots (test_editing.ReferenceCopyAndDeletionTests.test_copy_apis_remove_output_uuids_but_keep_and_transform_raw_metadata_snapshots) ... ok\ntest_copy_transforms_preserve_hole_back_layer_and_opening_metadata (test_editing.ReferenceCopyAndDeletionTests.test_copy_transforms_preserve_hole_back_layer_and_opening_metadata) ... ok\ntest_deletion_preserves_unselected_objects_order_attributes_and_original_list (test_editing.ReferenceCopyAndDeletionTests.test_deletion_preserves_unselected_objects_order_attributes_and_original_list) ... ok\ntest_invalid_points_axes_and_corrupt_sources_fail_without_changing_originals (test_editing.ReferenceCopyAndDeletionTests.test_invalid_points_axes_and_corrupt_sources_fail_without_changing_originals) ... ok\ntest_point_symmetry_uses_requested_center_and_rotates_copper_and_paste (test_editing.ReferenceCopyAndDeletionTests.test_point_symmetry_uses_requested_center_and_rotates_copper_and_paste) ... ok\ntest_reference_point_copy_translates_group_without_changing_attributes (test_editing.ReferenceCopyAndDeletionTests.test_reference_point_copy_translates_group_without_changing_attributes) ... ok\ntest_reflection_transforms_graphic_vertices_and_arc_sweep_without_changing_layer (test_editing.ReferenceCopyAndDeletionTests.test_reflection_transforms_graphic_vertices_and_arc_sweep_without_changing_layer) ... ok\ntest_reversed_line_points_and_double_reflection_preserve_world_geometry (test_editing.ReferenceCopyAndDeletionTests.test_reversed_line_points_and_double_reflection_preserve_world_geometry) ... ok\ntest_duplicate_checkpoints_do_not_add_an_extra_undo_step (test_editing.SnapshotTests.test_duplicate_checkpoints_do_not_add_an_extra_undo_step) ... ok\ntest_empty_and_uniform_calibration_states_can_be_restored (test_editing.SnapshotTests.test_empty_and_uniform_calibration_states_can_be_restored) ... ok\ntest_snapshot_captures_immutable_calibration_origin_and_pads (test_editing.SnapshotTests.test_snapshot_captures_immutable_calibration_origin_and_pads) ... ok\ntest_undo_restores_entire_state_and_preserves_pad_list_identity (test_editing.SnapshotTests.test_undo_restores_entire_state_and_preserves_pad_list_identity) ... ok\ntest_undo_skips_current_state_and_clear_forgets_history (test_editing.SnapshotTests.test_undo_skips_current_state_and_clear_forgets_history) ... ok\ntest_equivalent_angles_are_exported_within_one_turn (test_export_angle.ExportAngleTests.test_equivalent_angles_are_exported_within_one_turn) ... ok\ntest_attached_reference_recalibrates_without_discarding_existing_geometry_or_constraints (test_extended_gui.ExtendedGuiTests.test_attached_reference_recalibrates_without_discarding_existing_geometry_or_constraints) ... ok\ntest_circle_diameter_radius_constraint_and_line_equal_length_follow_gui_edits (test_extended_gui.ExtendedGuiTests.test_circle_diameter_radius_constraint_and_line_equal_length_follow_gui_edits) ... ok\ntest_constraint_propagation_cannot_move_a_pad_on_a_locked_other_layer (test_extended_gui.ExtendedGuiTests.test_constraint_propagation_cannot_move_a_pad_on_a_locked_other_layer) ... ok\ntest_copper_connection_retains_terminals_and_smd_paste_split_retains_copper_and_mask (test_extended_gui.ExtendedGuiTests.test_copper_connection_retains_terminals_and_smd_paste_split_retains_copper_and_mask) ... ok\ntest_delete_keeps_remaining_numbers_and_is_one_undo (test_extended_gui.ExtendedGuiTests.test_delete_keeps_remaining_numbers_and_is_one_undo) ... ok\ntest_explicit_width_bridge_connects_separate_terminals_without_changing_openings (test_extended_gui.ExtendedGuiTests.test_explicit_width_bridge_connects_separate_terminals_without_changing_openings) ... ok\ntest_hole_back_side_and_opening_attributes_apply_and_export (test_extended_gui.ExtendedGuiTests.test_hole_back_side_and_opening_attributes_apply_and_export) ... ok\ntest_owner_footprint_import_one_edit_and_reexport_preserve_other_entities (test_extended_gui.ExtendedGuiTests.test_owner_footprint_import_one_edit_and_reexport_preserve_other_entities) ... ok\ntest_pdf_page_and_crop_are_loaded_through_gui_and_bad_crop_keeps_the_document (test_extended_gui.ExtendedGuiTests.test_pdf_page_and_crop_are_loaded_through_gui_and_bad_crop_keeps_the_document) ... ok\ntest_persistent_symmetry_equal_size_drivers_conflict_and_release (test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release) ... ok\ntest_placement_attribute_enter_and_delete_only_affect_the_next_pad_template (test_extended_gui.ExtendedGuiTests.test_placement_attribute_enter_and_delete_only_affect_the_next_pad_template) ... ok\ntest_project_save_reopens_in_a_fresh_app_with_image_and_live_constraints (test_extended_gui.ExtendedGuiTests.test_project_save_reopens_in_a_fresh_app_with_image_and_live_constraints) ... ok\ntest_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility (test_extended_gui.ExtendedGuiTests.test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility) ... ok\ntest_three_copy_modes_transform_custom_and_graphic_without_changing_sources (test_extended_gui.ExtendedGuiTests.test_three_copy_modes_transform_custom_and_graphic_without_changing_sources) ... ok\ntest_unsaved_name_only_or_image_only_change_requires_discard_confirmation (test_extended_gui.ExtendedGuiTests.test_unsaved_name_only_or_image_only_change_requires_discard_confirmation) ... ok\ntest_all_six_layers_and_rotated_roundrect_render_without_gui_dependencies (test_graphics_reference.GraphicsReferenceTests.test_all_six_layers_and_rotated_roundrect_render_without_gui_dependencies) ... ok\ntest_holes_and_opening_values_are_validated_and_exported (test_graphics_reference.GraphicsReferenceTests.test_holes_and_opening_values_are_validated_and_exported) ... ok\ntest_line_circle_arc_and_polygon_keep_geometry_and_reject_degenerate_input (test_graphics_reference.GraphicsReferenceTests.test_line_circle_arc_and_polygon_keep_geometry_and_reject_degenerate_input) ... ok\ntest_pdf_page_selection_and_crop_are_explicit_and_do_not_modify_source (test_graphics_reference.GraphicsReferenceTests.test_pdf_page_selection_and_crop_are_explicit_and_do_not_modify_source) ... ok\ntest_anisotropic_pad_edit_handles_and_uniform_calibration_switch (test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch) ... ok\ntest_axis_mirror_copy_uses_origin_preserves_custom_copper_paste_and_undoes_as_one_operation (test_gui_interactions.GuiInteractionTests.test_axis_mirror_copy_uses_origin_preserves_custom_copper_paste_and_undoes_as_one_operation) ... ok\ntest_center_snap_shift_axis_lock_and_group_move_keep_outside_pad_unchanged (test_gui_interactions.GuiInteractionTests.test_center_snap_shift_axis_lock_and_group_move_keep_outside_pad_unchanged) ... ok\ntest_continuous_creation_skips_used_numbers_without_renumbering_existing_pads (test_gui_interactions.GuiInteractionTests.test_continuous_creation_skips_used_numbers_without_renumbering_existing_pads) ... ok\ntest_drag_creation_stays_in_tool_and_advances_only_the_next_number (test_gui_interactions.GuiInteractionTests.test_drag_creation_stays_in_tool_and_advances_only_the_next_number) ... ok\ntest_drag_shapes_move_rotate_all_resize_handles_and_apply_from_table (test_gui_interactions.GuiInteractionTests.test_drag_shapes_move_rotate_all_resize_handles_and_apply_from_table) ... ok\ntest_entry_shortcuts_do_not_invoke_document_actions_or_os_clipboard (test_gui_interactions.GuiInteractionTests.test_entry_shortcuts_do_not_invoke_document_actions_or_os_clipboard) ... ok\ntest_failed_nonconnected_merge_and_excessive_corner_radius_are_atomic (test_gui_interactions.GuiInteractionTests.test_failed_nonconnected_merge_and_excessive_corner_radius_are_atomic) ... ok\ntest_four_point_axis_lock_and_view_changes_preserve_anisotropic_calibration (test_gui_interactions.GuiInteractionTests.test_four_point_axis_lock_and_view_changes_preserve_anisotropic_calibration) ... ok\ntest_marquee_selection_ctrl_toggle_group_move_and_cancel_preserve_document (test_gui_interactions.GuiInteractionTests.test_marquee_selection_ctrl_toggle_group_move_and_cancel_preserve_document) ... ok\ntest_merge_fillet_attributes_move_copy_paste_and_each_undo_preserve_paste_openings (test_gui_interactions.GuiInteractionTests.test_merge_fillet_attributes_move_copy_paste_and_each_undo_preserve_paste_openings) ... ok\ntest_multi_alignment_distribution_and_mass_attributes_preserve_numbers (test_gui_interactions.GuiInteractionTests.test_multi_alignment_distribution_and_mass_attributes_preserve_numbers) ... ok\ntest_numeric_continuous_placement_frozen_copy_and_group_paste_undo (test_gui_interactions.GuiInteractionTests.test_numeric_continuous_placement_frozen_copy_and_group_paste_undo) ... ok\ntest_pad_field_enter_updates_selection_and_validates_only_the_next_placement_template (test_gui_interactions.GuiInteractionTests.test_pad_field_enter_updates_selection_and_validates_only_the_next_placement_template) ... ok\ntest_pending_complete_calibration_blocks_selected_edits_until_explicitly_finished (test_gui_interactions.GuiInteractionTests.test_pending_complete_calibration_blocks_selected_edits_until_explicitly_finished) ... ok\ntest_selection_and_cancelled_drag_previews_never_change_saved_geometry (test_gui_interactions.GuiInteractionTests.test_selection_and_cancelled_drag_previews_never_change_saved_geometry) ... ok\ntest_undo_commits_pending_points_drag_cancel_and_image_change (test_gui_interactions.GuiInteractionTests.test_undo_commits_pending_points_drag_cancel_and_image_change) ... ok\ntest_visible_number_editor_commits_only_number_cancels_and_keeps_next_draw_number_unused (test_gui_interactions.GuiInteractionTests.test_visible_number_editor_commits_only_number_cancels_and_keeps_next_draw_number_unused) ... ok\ntest_zoom_pan_during_calibration_and_display_changes_preserve_export (test_gui_interactions.GuiInteractionTests.test_zoom_pan_during_calibration_and_display_changes_preserve_export) ... ok\ntest_counterclockwise_corners_and_hit_at_thirty_degrees (test_interaction.PadInteractionTests.test_counterclockwise_corners_and_hit_at_thirty_degrees) ... ok\ntest_crossing_fixed_corner_is_rejected_without_mutation (test_interaction.PadInteractionTests.test_crossing_fixed_corner_is_rejected_without_mutation) ... ok\ntest_every_handle_keeps_its_opposite_corner_when_rotated (test_interaction.PadInteractionTests.test_every_handle_keeps_its_opposite_corner_when_rotated) ... ok\ntest_resize_clamps_radius_to_new_short_side (test_interaction.PadInteractionTests.test_resize_clamps_radius_to_new_short_side) ... ok\ntest_resize_rejects_nonfinite_or_unrepresentable_geometry (test_interaction.PadInteractionTests.test_resize_rejects_nonfinite_or_unrepresentable_geometry) ... ok\ntest_rotated_resize_keeps_opposite_corner_and_original_unchanged (test_interaction.PadInteractionTests.test_rotated_resize_keeps_opposite_corner_and_original_unchanged) ... ok\ntest_roundrect_cutout_is_not_selectable_after_rotation (test_interaction.PadInteractionTests.test_roundrect_cutout_is_not_selectable_after_rotation) ... ok\ntest_roundrect_resize_rejects_unrepresentable_radius_without_rectangularizing (test_interaction.PadInteractionTests.test_roundrect_resize_rejects_unrepresentable_radius_without_rectangularizing) ... ok\ntest_very_large_angles_have_equivalent_finite_geometry (test_interaction.PadInteractionTests.test_very_large_angles_have_equivalent_finite_geometry) ... ok\ntest_bad_syntax_wrong_profile_and_existing_output_are_rejected (test_persistence.PersistenceTests.test_bad_syntax_wrong_profile_and_existing_output_are_rejected) ... ok\ntest_basic_holes_and_graphics_import (test_persistence.PersistenceTests.test_basic_holes_and_graphics_import) ... ok\ntest_custom_using_copper_polygon_as_paste_is_retained_not_transformed (test_persistence.PersistenceTests.test_custom_using_copper_polygon_as_paste_is_retained_not_transformed) ... ok\ntest_generated_custom_and_original_paste_are_editable_together (test_persistence.PersistenceTests.test_generated_custom_and_original_paste_are_editable_together) ... ok\ntest_invalid_embedded_image_and_duplicate_json_keys_are_rejected (test_persistence.PersistenceTests.test_invalid_embedded_image_and_duplicate_json_keys_are_rejected) ... ok\ntest_merge_uses_effective_root_paste_once_and_reopens_its_windows (test_persistence.PersistenceTests.test_merge_uses_effective_root_paste_once_and_reopens_its_windows) ... ok\ntest_mounting_type_changes_keep_other_footprint_attribute_flags (test_persistence.PersistenceTests.test_mounting_type_changes_keep_other_footprint_attribute_flags) ... ok\ntest_new_pad_does_not_inherit_retained_root_opening_values (test_persistence.PersistenceTests.test_new_pad_does_not_inherit_retained_root_opening_values) ... ok\ntest_pad_edit_keeps_uuid_and_passive_root_information (test_persistence.PersistenceTests.test_pad_edit_keeps_uuid_and_passive_root_information) ... ok\ntest_project_failed_save_preserves_previous_file (test_persistence.PersistenceTests.test_project_failed_save_preserves_previous_file) ... ok\ntest_project_keeps_import_source_and_exact_export_after_reopen (test_persistence.PersistenceTests.test_project_keeps_import_source_and_exact_export_after_reopen) ... ok\ntest_project_rejects_bad_schema_constraints_duplicate_and_intrusion (test_persistence.PersistenceTests.test_project_rejects_bad_schema_constraints_duplicate_and_intrusion) ... ok\ntest_project_restores_image_constraints_calibration_and_metadata (test_persistence.PersistenceTests.test_project_restores_image_constraints_calibration_and_metadata) ... ok\ntest_reference_value_edit_replaces_only_string_token (test_persistence.PersistenceTests.test_reference_value_edit_replaces_only_string_token) ... ok\ntest_root_opening_defaults_and_local_zero_survive_moving_and_project (test_persistence.PersistenceTests.test_root_opening_defaults_and_local_zero_survive_moving_and_project) ... ok\ntest_source_protection_metadata_cannot_be_forged_in_a_project (test_persistence.PersistenceTests.test_source_protection_metadata_cannot_be_forged_in_a_project) ... ok\ntest_unknown_references_retain_exact_but_block_geometry_edit (test_persistence.PersistenceTests.test_unknown_references_retain_exact_but_block_geometry_edit) ... ok\ntest_unsolved_constraints_are_not_silently_solved_on_load_or_save (test_persistence.PersistenceTests.test_unsolved_constraints_are_not_silently_solved_on_load_or_save) ... ok\ntest_utf8_escape_crlf_and_unchanged_roundtrip_are_exact (test_persistence.PersistenceTests.test_utf8_escape_crlf_and_unchanged_roundtrip_are_exact) ... ok\ntest_uuid_graphic_edits_keep_identity_and_copies_do_not_duplicate_it (test_persistence.PersistenceTests.test_uuid_graphic_edits_keep_identity_and_copies_do_not_duplicate_it) ... ok\n\n----------------------------------------------------------------------\nRan 154 tests in 125.226s\n\nOK\n",
+  "full_models_and_outputs": "evidence.zip",
+  "raw_report_sha256": "1b87943b26b2b74ee8a56669dc6d2e86bb59d7c77b947c23344abf5a6899cf78",
+  "output_inventory": [
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_attached_reference_recalibrates_without_discarding_existing_geometry_or_constraints",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-001.pretty\\Expanded_Case_1.kicad_mod",
+      "sha256": "0f546361d839b0dad89a08be5e954bb88ee2ac5afc84f149af73c1fd43598597"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_attached_reference_recalibrates_without_discarding_existing_geometry_or_constraints",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-002.pretty\\Expanded_Case_2.kicad_mod",
+      "sha256": "f1fd5515858264c99b10508da2403e17c582c81c2c819094e875380f8f73a09f"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_attached_reference_recalibrates_without_discarding_existing_geometry_or_constraints",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-003.pretty\\Expanded_Case_3.kicad_mod",
+      "sha256": "58930962af1ff5bfb0096482cc75ccc5a4510d257d566a750486ce9126054ef2"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_attached_reference_recalibrates_without_discarding_existing_geometry_or_constraints",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-004.pretty\\Expanded_Case_4.kicad_mod",
+      "sha256": "1e188c89ade3e8424141472f48155304fdf508e5a4f33a7b716e5b4ab891b47a"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_attached_reference_recalibrates_without_discarding_existing_geometry_or_constraints",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-005.pretty\\Expanded_Case_5.kicad_mod",
+      "sha256": "5f6d418f4b04271964ab3b19de52dfd548d7f4b9083942d1eebc019ac041a651"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_attached_reference_recalibrates_without_discarding_existing_geometry_or_constraints",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-006.pretty\\Expanded_Case_6.kicad_mod",
+      "sha256": "c85627f47a919cb59faa26b895f0e3cc04c0b4d5eb5c4ef932c58e280b209c7b"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_circle_diameter_radius_constraint_and_line_equal_length_follow_gui_edits",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-007.pretty\\Expanded_Case_7.kicad_mod",
+      "sha256": "d8bf53718d2921179cda3ec504b08b8caeb955ac7533e59b9537e3653a98b0af"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_circle_diameter_radius_constraint_and_line_equal_length_follow_gui_edits",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-008.pretty\\Expanded_Case_8.kicad_mod",
+      "sha256": "0ded2c2482671f0c14ff7829cd56aef338fdde6cac31358712573cf1e197a1a2"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_circle_diameter_radius_constraint_and_line_equal_length_follow_gui_edits",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-009.pretty\\Expanded_Case_9.kicad_mod",
+      "sha256": "bcfda465b90e2672f6d30cfa728285c2598aef85f3266ee4f5b08d84874bec54"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_circle_diameter_radius_constraint_and_line_equal_length_follow_gui_edits",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-010.pretty\\Expanded_Case_10.kicad_mod",
+      "sha256": "23068a63d3496524f79ccde839617433263cddd65d9e68c38c0f4c5d2023b456"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_circle_diameter_radius_constraint_and_line_equal_length_follow_gui_edits",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-011.pretty\\Expanded_Case_11.kicad_mod",
+      "sha256": "4828ec58e60c8fefc396e7d781130cbe641aec4b7683acb61a099102006014c8"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_circle_diameter_radius_constraint_and_line_equal_length_follow_gui_edits",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-012.pretty\\Expanded_Case_12.kicad_mod",
+      "sha256": "8621193cd407974886e3080b3684b59459514bafe401ebc6e6a44692fb5a89f0"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_circle_diameter_radius_constraint_and_line_equal_length_follow_gui_edits",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-013.pretty\\Expanded_Case_13.kicad_mod",
+      "sha256": "2cbccaffb9860f22ac07e4f9f5cabd3e4377b5bc522b680a656d29ceb4444430"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_circle_diameter_radius_constraint_and_line_equal_length_follow_gui_edits",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-014.pretty\\Expanded_Case_14.kicad_mod",
+      "sha256": "7eff632ff1ea73dd4d7d1d419ab3ebf23897fc2bcc2592053ca2d5c16a2428bd"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_constraint_propagation_cannot_move_a_pad_on_a_locked_other_layer",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-015.pretty\\Expanded_Case_15.kicad_mod",
+      "sha256": "86b45246e64c4f0fe041664e297663d1528a1f541c2c6a76202ce56c5527e745"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_constraint_propagation_cannot_move_a_pad_on_a_locked_other_layer",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-016.pretty\\Expanded_Case_16.kicad_mod",
+      "sha256": "a3132029d2760150dc2d68b43834611fc7b924ca9d56afe9c8e824b6853988eb"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_constraint_propagation_cannot_move_a_pad_on_a_locked_other_layer",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-017.pretty\\Expanded_Case_17.kicad_mod",
+      "sha256": "a1162f6b459e85445947bae9ae1dd6f43a6b5d7600b6cc955d7c514a64b19307"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_constraint_propagation_cannot_move_a_pad_on_a_locked_other_layer",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-018.pretty\\Expanded_Case_18.kicad_mod",
+      "sha256": "e0cc1eb206c80eedf8c3eb03d6cbc7377aa11137eb626aa3d174c53f7070bb4f"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_constraint_propagation_cannot_move_a_pad_on_a_locked_other_layer",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-019.pretty\\Expanded_Case_19.kicad_mod",
+      "sha256": "943c6e9cb6b04e1c23f3e48f3d785a792308544d782af314cb25be722d129013"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_copper_connection_retains_terminals_and_smd_paste_split_retains_copper_and_mask",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-020.pretty\\Expanded_Case_20.kicad_mod",
+      "sha256": "436b475a374cfc1108f7da317389b6372c0824cb521d489e309c587f1165c98b"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_copper_connection_retains_terminals_and_smd_paste_split_retains_copper_and_mask",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-021.pretty\\Expanded_Case_21.kicad_mod",
+      "sha256": "b143811d244c543ec7796c8c16758f96340d1e2c0c0343750118bb0ae9cc7a60"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_copper_connection_retains_terminals_and_smd_paste_split_retains_copper_and_mask",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-022.pretty\\Expanded_Case_22.kicad_mod",
+      "sha256": "292518b57f84a8b288c86e7796bf30824486d0ce3e1bd1ee357d841c370ed763"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_copper_connection_retains_terminals_and_smd_paste_split_retains_copper_and_mask",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-023.pretty\\Expanded_Case_23.kicad_mod",
+      "sha256": "526d9f682bd76e2baf882c353dacd3f458dbf4003db11c479a1321ef062e7c8f"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_copper_connection_retains_terminals_and_smd_paste_split_retains_copper_and_mask",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-024.pretty\\Expanded_Case_24.kicad_mod",
+      "sha256": "f9bd857e3f19380bd9dfdf381565ddd7a60f37bfe95c1aa360c283be642cfce9"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_copper_connection_retains_terminals_and_smd_paste_split_retains_copper_and_mask",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-025.pretty\\Expanded_Case_25.kicad_mod",
+      "sha256": "0ff9ae0d55cf726ebc3fd84468a14ebbeca5e85d47eadf3a6c00ec6c7577a520"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_delete_keeps_remaining_numbers_and_is_one_undo",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-026.pretty\\Expanded_Case_26.kicad_mod",
+      "sha256": "d1a9c9b59ff9caf7121543452f85e0af8e2edf691a5870335a1a4785c9d8ec35"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_delete_keeps_remaining_numbers_and_is_one_undo",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-027.pretty\\Expanded_Case_27.kicad_mod",
+      "sha256": "53ae9c36fc71c9a4e8fb8feb14f8fcdef63e39f9698768ab9a3f8eebd090882b"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_delete_keeps_remaining_numbers_and_is_one_undo",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-028.pretty\\Expanded_Case_28.kicad_mod",
+      "sha256": "859417455e9488a5fa25894bbf0b5f8b385b7f09a7ba8feef8590c7421187946"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_delete_keeps_remaining_numbers_and_is_one_undo",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-029.pretty\\Expanded_Case_29.kicad_mod",
+      "sha256": "edf418797a8cf85773965a66c24addb934be897cf094bedd990a16d96ef98697"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_delete_keeps_remaining_numbers_and_is_one_undo",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-030.pretty\\Expanded_Case_30.kicad_mod",
+      "sha256": "be0688ce01a64fb46406efda5e989cfe671b9e97f47dba3a0c3e9b1ac328f794"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_delete_keeps_remaining_numbers_and_is_one_undo",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-031.pretty\\Expanded_Case_31.kicad_mod",
+      "sha256": "6433b5f5c74dd334b847ea40ae6686d78d7a14511221cb7e9b2a3bffcc6fcc74"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_delete_keeps_remaining_numbers_and_is_one_undo",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-032.pretty\\Expanded_Case_32.kicad_mod",
+      "sha256": "14766ac43ddb55b9d7bf75b351e4f89f776172752ae23874de7f588a9b0ac79b"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_explicit_width_bridge_connects_separate_terminals_without_changing_openings",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-033.pretty\\Expanded_Case_33.kicad_mod",
+      "sha256": "6fbabe17c8b05bca9133b895b443565ea7c59cd47c69b755f8481305d51341bf"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_explicit_width_bridge_connects_separate_terminals_without_changing_openings",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-034.pretty\\Expanded_Case_34.kicad_mod",
+      "sha256": "dd74a5fdc0c47865aef73708144243bc287e470f8b72db5ca8966cf71dfe619b"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_explicit_width_bridge_connects_separate_terminals_without_changing_openings",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-035.pretty\\Expanded_Case_35.kicad_mod",
+      "sha256": "f45b52d897c3e93051fe39406c604ed46e0d730ee0a8c3d06677aea912bac30a"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_explicit_width_bridge_connects_separate_terminals_without_changing_openings",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-036.pretty\\Expanded_Case_36.kicad_mod",
+      "sha256": "f6269eab457c4e4561ed2c1687c0abe686bef22074476863df2dc7fd5bc6e0c4"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_explicit_width_bridge_connects_separate_terminals_without_changing_openings",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-037.pretty\\Expanded_Case_37.kicad_mod",
+      "sha256": "a421b8d6a61e7f06ea0e6c3c27e21ec8824ce8bd32aef61e9d7e2b5f65a92955"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_hole_back_side_and_opening_attributes_apply_and_export",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-038.pretty\\Expanded_Case_38.kicad_mod",
+      "sha256": "6b47f777883b3497f0e7b8abcb721d83ca881914e497f51da0d5bd2b0f43f5f0"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_hole_back_side_and_opening_attributes_apply_and_export",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-039.pretty\\Expanded_Case_39.kicad_mod",
+      "sha256": "e71d2d31df737ad1852ff3427431554fb958629a68d3625176370a6cda9ff42f"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_hole_back_side_and_opening_attributes_apply_and_export",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-040.pretty\\Expanded_Case_40.kicad_mod",
+      "sha256": "af202dad2f6e8ec76738d70be60a8215412cc106f816843530bdc3e3a64d70b9"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_hole_back_side_and_opening_attributes_apply_and_export",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-041.pretty\\Expanded_Case_41.kicad_mod",
+      "sha256": "9c1e0b321cb251bfdd6930dce57e71aa3cae1744e9b66aa019c4ed999f1e4905"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_hole_back_side_and_opening_attributes_apply_and_export",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-042.pretty\\Expanded_Case_42.kicad_mod",
+      "sha256": "356c41e1eb45b2c3eaf6f6649ee142309c8120ab8bfdab66a1c488e1f5639c88"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_owner_footprint_import_one_edit_and_reexport_preserve_other_entities",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-043.pretty\\Expanded_Case_43.kicad_mod",
+      "sha256": "4daa30acc323591cf5c7f373a681ed036c9da480e4f368560d17cbda762dc126"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_owner_footprint_import_one_edit_and_reexport_preserve_other_entities",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-044.pretty\\Expanded_Case_44.kicad_mod",
+      "sha256": "9ed0066caaf623fbbc17dad7d52134d52fb97f98de8f986da4dcc4d9242e7af2"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-045.pretty\\Expanded_Case_45.kicad_mod",
+      "sha256": "04c93e686fcb93ba563bc87de2271068fd0f2e28dee5cb424f8dde2358c4ef42"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-046.pretty\\Expanded_Case_46.kicad_mod",
+      "sha256": "6ecee2cd1d69a3fd81fdb6d1f46a185754aeca655dc9c94a4763f98b90be10e1"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-047.pretty\\Expanded_Case_47.kicad_mod",
+      "sha256": "e1389b1a20d23214bccddd899cf8abeb7761e14bcb715d4f18aa5b3a543c797d"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-048.pretty\\Expanded_Case_48.kicad_mod",
+      "sha256": "c35a95bc40ba5c1313c588da59d782df0c1d9e8d43e45e6e732b3b021bf8fe57"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-049.pretty\\Expanded_Case_49.kicad_mod",
+      "sha256": "164dd686c454ef229add0cb048765c7bda2b468e0c651d2c4f2412e6908dc11b"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-050.pretty\\Expanded_Case_50.kicad_mod",
+      "sha256": "456b0125a35db51f73137db3663dc873f9e9c3699e0d160e7b9025199a049172"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-051.pretty\\Expanded_Case_51.kicad_mod",
+      "sha256": "b7074b3a1d90ed0b3e34a9402097017187d632ac4af67650e5bf5389bdb378ac"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-052.pretty\\Expanded_Case_52.kicad_mod",
+      "sha256": "0623f98cd47d66a0a64da2e91ad8e5544ca27d76f028317cbc33e7bf5f7f5ad7"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-053.pretty\\Expanded_Case_53.kicad_mod",
+      "sha256": "bcdfe261fe3ea1b4f143aca1781676b15a8fab89c285114cb09622de1ddd04d8"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_persistent_symmetry_equal_size_drivers_conflict_and_release",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-054.pretty\\Expanded_Case_54.kicad_mod",
+      "sha256": "5d66b82f4ad56c456f33a121a3c6cb49551f6820f3b64948860db199f3b6f4a3"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_placement_attribute_enter_and_delete_only_affect_the_next_pad_template",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-055.pretty\\Expanded_Case_55.kicad_mod",
+      "sha256": "25eb90f4b0836c9e9b345e53997f11139ae6e9b8e6c9e06166d1f20ebc2c1e3c"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_placement_attribute_enter_and_delete_only_affect_the_next_pad_template",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-056.pretty\\Expanded_Case_56.kicad_mod",
+      "sha256": "88176b0acb065c9fba86f08be45628a10d995c5cb4deb1052bcde3100915af8e"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_placement_attribute_enter_and_delete_only_affect_the_next_pad_template",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-057.pretty\\Expanded_Case_57.kicad_mod",
+      "sha256": "57c15e057f6f4c03771d3edde02304c96bc63767e482955a8c66988b5a0e95a9"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_placement_attribute_enter_and_delete_only_affect_the_next_pad_template",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-058.pretty\\Expanded_Case_58.kicad_mod",
+      "sha256": "d54a232339448bceda09a0685052452bfcef34750d6945647733d71ab1048800"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_project_save_reopens_in_a_fresh_app_with_image_and_live_constraints",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-059.pretty\\Expanded_Case_59.kicad_mod",
+      "sha256": "e00b424d912e2d15d1731d3b18ce5e28869c978421dcec6cb12e3cf3ad5dc75e"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_project_save_reopens_in_a_fresh_app_with_image_and_live_constraints",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-060.pretty\\Expanded_Case_60.kicad_mod",
+      "sha256": "8c0b604813e1d8affaa23b7a2c931b2a8f7977bf8205ba0f2f90a147dbfec9cd"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_project_save_reopens_in_a_fresh_app_with_image_and_live_constraints",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-061.pretty\\Expanded_Case_61.kicad_mod",
+      "sha256": "a2e7b33b2cfcf20bb71cc0358da138c9d7cdc62cbe8dacf89d80059c79c71d01"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_project_save_reopens_in_a_fresh_app_with_image_and_live_constraints",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-062.pretty\\Expanded_Case_62.kicad_mod",
+      "sha256": "75c89a32b09b545f7d20bdaa4aa273f3b7719fd30a6a22c01db09702d985dd5b"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_project_save_reopens_in_a_fresh_app_with_image_and_live_constraints",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-063.pretty\\Expanded_Case_63.kicad_mod",
+      "sha256": "a3686dbcfedf2be0ce81b3cbdc5d2e5e5b4a48e65b36bc2e40e48c561ccde3a0"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-064.pretty\\Expanded_Case_64.kicad_mod",
+      "sha256": "5ab654f302eacb6252b969fdd24a92deab12acef34c21e4f516664af88bb812d"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-065.pretty\\Expanded_Case_65.kicad_mod",
+      "sha256": "ee36da405b822a8615e77394bc695662a608478a513359aa9101c69bd59e138e"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-066.pretty\\Expanded_Case_66.kicad_mod",
+      "sha256": "d6070b159491971f8bcd0bff84ca64e529b8941abedb4fe08a7cef3c99605165"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-067.pretty\\Expanded_Case_67.kicad_mod",
+      "sha256": "703c191551521c3fb0b62fba013a0dc6766f1ea1a295f26319c65bbff57fccc3"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-068.pretty\\Expanded_Case_68.kicad_mod",
+      "sha256": "62663139f7b19b19cb5966b84b228f6821052ee7230233b67a26c7dcaa0893e9"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-069.pretty\\Expanded_Case_69.kicad_mod",
+      "sha256": "e870aa09bd039c2839d3f2f73466305ff3585f5e2e2ad019de6d413f5e61fede"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_six_layer_graphics_drag_arc_polygon_select_and_layer_visibility",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-070.pretty\\Expanded_Case_70.kicad_mod",
+      "sha256": "1d657eb4f44800732c0f9a48f998c4f6429823cfb4cfda3443768d44e14bbb6f"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_three_copy_modes_transform_custom_and_graphic_without_changing_sources",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-071.pretty\\Expanded_Case_71.kicad_mod",
+      "sha256": "0ef4eca80484a177619faec4a4f8a1a1f546b89ec2d63b7f987b374642dd201c"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_three_copy_modes_transform_custom_and_graphic_without_changing_sources",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-072.pretty\\Expanded_Case_72.kicad_mod",
+      "sha256": "72ea9d2fa546da7b3a073aa22a3037ec574a491b26b40a1ed24f38257a0476be"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_three_copy_modes_transform_custom_and_graphic_without_changing_sources",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-073.pretty\\Expanded_Case_73.kicad_mod",
+      "sha256": "cecd5db8b87e7bfd8ff99662ba140320fd2a661afc9d96ba4896f52eb70f9ac9"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_three_copy_modes_transform_custom_and_graphic_without_changing_sources",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-074.pretty\\Expanded_Case_74.kicad_mod",
+      "sha256": "97920b03cb20e534adc88bb69533ed886718eeb0b16311550ae9347293da784e"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_three_copy_modes_transform_custom_and_graphic_without_changing_sources",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-075.pretty\\Expanded_Case_75.kicad_mod",
+      "sha256": "9b71f306189264a2e76532e9d6b1d3214f7470cfad4b2bec2e2b938e7f9ef58e"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_three_copy_modes_transform_custom_and_graphic_without_changing_sources",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-076.pretty\\Expanded_Case_76.kicad_mod",
+      "sha256": "39359b27219b992a10fd31ad4a1dcf2bc905c0d23937e3f0bf555d100a21a942"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_three_copy_modes_transform_custom_and_graphic_without_changing_sources",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-077.pretty\\Expanded_Case_77.kicad_mod",
+      "sha256": "4b127d2bbeee209425f876a3defd45d1adf7e40af6804b9fe2b22089e106831d"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_three_copy_modes_transform_custom_and_graphic_without_changing_sources",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-078.pretty\\Expanded_Case_78.kicad_mod",
+      "sha256": "748af1c5dc091c02c95f7f02b82938529d2c8cb79aa9cb1799024cde1cf5b0c8"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_three_copy_modes_transform_custom_and_graphic_without_changing_sources",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-079.pretty\\Expanded_Case_79.kicad_mod",
+      "sha256": "0807e1f97870a6b59dabd06ee99dccdd9c24f751ff497f85bc4e94e67e20cc02"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_unsaved_name_only_or_image_only_change_requires_discard_confirmation",
+      "capture": "committed-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-080.pretty\\Expanded_Case_80.kicad_mod",
+      "sha256": "b3bd7c3cac362bb038dd3109f690be46098a9dae7d9c28728960fd93d8fd19f5"
+    },
+    {
+      "test": "test_extended_gui.ExtendedGuiTests.test_unsaved_name_only_or_image_only_change_requires_discard_confirmation",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-081.pretty\\Expanded_Case_81.kicad_mod",
+      "sha256": "27425b95d7d376646380939253e37b911529aaf6db69ee1dbcbbe610c8df77f1"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_anisotropic_pad_edit_handles_and_uniform_calibration_switch",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-082.pretty\\Expanded_Case_82.kicad_mod",
+      "sha256": "6e354b7c14871e5110368e566c2e6885ca97257de7e6d114b2e8eeff393a256e"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_axis_mirror_copy_uses_origin_preserves_custom_copper_paste_and_undoes_as_one_operation",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-083.pretty\\Expanded_Case_83.kicad_mod",
+      "sha256": "74b3c644c7dbfc710d8aa0c1f7856a3c2d6607affec5628135f759a70766f6c6"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_center_snap_shift_axis_lock_and_group_move_keep_outside_pad_unchanged",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-084.pretty\\Expanded_Case_84.kicad_mod",
+      "sha256": "9175c62e6f1071c6407fa63111b8b015216663c115e13d85dc879982d5cb0d65"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_continuous_creation_skips_used_numbers_without_renumbering_existing_pads",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-085.pretty\\Expanded_Case_85.kicad_mod",
+      "sha256": "3d324022d620627dbe0d748aa723d6561370f7c64cf408a65acc9e01c32f781b"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_drag_creation_stays_in_tool_and_advances_only_the_next_number",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-086.pretty\\Expanded_Case_86.kicad_mod",
+      "sha256": "7035b6014495daeda50f74981bd4794d001b3814be9963db8a7fe84f01cae403"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_drag_shapes_move_rotate_all_resize_handles_and_apply_from_table",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-087.pretty\\Expanded_Case_87.kicad_mod",
+      "sha256": "924936d58dc3ff83f620a141a408d2a4ff23d2a716401db73fd288f2309063e7"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_entry_shortcuts_do_not_invoke_document_actions_or_os_clipboard",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-088.pretty\\Expanded_Case_88.kicad_mod",
+      "sha256": "f73607229ab8f79c1c722dd34904c10a939b0a6614b61e1cbfbde2ae67e7afec"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_failed_nonconnected_merge_and_excessive_corner_radius_are_atomic",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-089.pretty\\Expanded_Case_89.kicad_mod",
+      "sha256": "82ac269dba713b771d77d901c2ceeac8a9295f8caa91330fd42e2014eef4f6bf"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_four_point_axis_lock_and_view_changes_preserve_anisotropic_calibration",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-090.pretty\\Expanded_Case_90.kicad_mod",
+      "sha256": "79df59f45adb0fc456db73b33c3d089647f42061af5bb3f1c1e55607c787031e"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_marquee_selection_ctrl_toggle_group_move_and_cancel_preserve_document",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-091.pretty\\Expanded_Case_91.kicad_mod",
+      "sha256": "ae9a287efeb246c7d6d0d0fdc23d8afc8c38c2000ca7b95bc855af7cb81edd2e"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_merge_fillet_attributes_move_copy_paste_and_each_undo_preserve_paste_openings",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-092.pretty\\Expanded_Case_92.kicad_mod",
+      "sha256": "91eb169402c638760e23e125ddcf6ebbeca1edfe82ce53e0c03c43cab95e3f96"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_multi_alignment_distribution_and_mass_attributes_preserve_numbers",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-093.pretty\\Expanded_Case_93.kicad_mod",
+      "sha256": "420827dfda3e02d7f807e71b0f8850c9090cea4b28ba791eb03139bae79154ad"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_numeric_continuous_placement_frozen_copy_and_group_paste_undo",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-094.pretty\\Expanded_Case_94.kicad_mod",
+      "sha256": "f9dd6a56b608d2b42da1295997f06210c844019a5c735072c310994d5848d6d1"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_pad_field_enter_updates_selection_and_validates_only_the_next_placement_template",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-095.pretty\\Expanded_Case_95.kicad_mod",
+      "sha256": "c05373f04f61d35619bdb4fa025f5c55cdc82d356fedef33593af833a4672e40"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_pending_complete_calibration_blocks_selected_edits_until_explicitly_finished",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-096.pretty\\Expanded_Case_96.kicad_mod",
+      "sha256": "0a7bf8db19f7c43d380b50900b6d5a779e3f11d4cdc73d3f59295e2e4ceca257"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_selection_and_cancelled_drag_previews_never_change_saved_geometry",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-097.pretty\\Expanded_Case_97.kicad_mod",
+      "sha256": "d4cb6587a0af4c6f37ea3e06fe0e6e82dc50134ddb93f8a44f006e2d0e6fafbe"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_visible_number_editor_commits_only_number_cancels_and_keeps_next_draw_number_unused",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-098.pretty\\Expanded_Case_98.kicad_mod",
+      "sha256": "990ca4e7f432ef025788cd222675aa2bcd61618e266a3b47e7b79e05b7498671"
+    },
+    {
+      "test": "test_gui_interactions.GuiInteractionTests.test_zoom_pan_during_calibration_and_display_changes_preserve_export",
+      "capture": "final-state",
+      "output": "<WORKSPACE>\\tasks\\kicad-stage1-validation-20261123\\expanded-run-20261122T201023Z-aa705fe2\\case-099.pretty\\Expanded_Case_99.kicad_mod",
+      "sha256": "55fbed6a5ae4a4639f2cf3a4fc93efd2d1981c4b115c439e1c98bb11fbb82c82"
+    }
+  ]
+}

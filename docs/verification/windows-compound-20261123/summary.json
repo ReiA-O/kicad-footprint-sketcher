@@ -1,0 +1,29 @@
+{
+  "source_commit": "2c4a84fbcce55b3c6c38300a89c7a9c7b1d2a3eb",
+  "started_utc": "2026-11-22T18:17:43.176338+00:00",
+  "finished_utc": "2026-11-22T18:18:27.644812+00:00",
+  "tests": 62,
+  "outputs": 21,
+  "logical_pads": 41,
+  "physical_entities": 61,
+  "custom_copper_entities": 9,
+  "paste_apertures": 20,
+  "max_abs_scalar_mm": 4.732359491499416e-07,
+  "max_abs_angle": 0.0,
+  "max_outline_vertex_edge_mm": 4.966475205121781e-07,
+  "fillet_example": "Editor_Case_12.kicad_mod",
+  "archive_sha256": "948fdd6e46d74486363a7a0a7f585290d9d0ed9ca6f5b43fe0a8580e395dcd26",
+  "baseline_four_outputs_identical": true,
+  "regression_pad_differences_zero": true,
+  "gui": {
+    "commit": "2c4a84fbcce55b3c6c38300a89c7a9c7b1d2a3eb",
+    "title": "KiCad Footprint Sketcher - NE555（合体・フィレット対応）",
+    "image": "NE555-SOIC8-land-pattern.png  ·  740 × 500 px",
+    "mapped": true,
+    "canvas_size": [
+      1229,
+      629
+    ],
+    "scale": 1.0
+  }
+}
