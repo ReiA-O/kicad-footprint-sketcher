@@ -143,7 +143,7 @@ def _render_pad(pad: Pad) -> list[str]:
     layers = " ".join(_quoted(layer) for layer in PAD_LAYERS)
     lines = [
         f"  (pad {_quoted(pad.number)} smd {shape}",
-        f"    (at {_decimal(pad.x)} {_decimal(pad.y)} {_decimal(pad.angle)})",
+        f"    (at {_decimal(pad.x)} {_decimal(pad.y)} {_decimal(pad.angle % 360)})",
         f"    (size {_decimal(pad.width)} {_decimal(pad.height)})",
         f"    (layers {layers})",
     ]
