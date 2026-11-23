@@ -12,6 +12,7 @@ import stat
 from tempfile import NamedTemporaryFile
 import warnings
 import zipfile
+from uuid import NAMESPACE_URL, uuid5
 
 from PIL import Image
 
@@ -21,6 +22,7 @@ from .model import (AxisCalibration, Calibration, Pad, Sketch, KICAD_FORMAT_VERS
 _MAX_TEXT = 32 * 1024 * 1024
 _MAX_MEMBER = 256 * 1024 * 1024
 _FORMAT = "kicad-footprint-sketcher"
+_PASTE_OWNERSHIP_PROPERTY = "FootprintSketcher-PasteOwnership"
 
 
 @dataclass
@@ -145,6 +147,108 @@ def _xy(node):
 
 def _raw(text, node):
     return text[node.start:node.end]
+
+
+def _node_identity(node):
+    uuid, timestamp = _one(node, "uuid"), _one(node, "tstamp")
+    if uuid is not None and timestamp is not None:
+        raise ValueError("開口の所有情報に複数の識別子があります。")
+    identity = uuid if uuid is not None else timestamp
+    return _atom(identity, 1) if identity is not None else None
+
+
+def _render_entities_with_ownership(pads):
+    """Use explicit identities, never generator/adjacency, for Paste ownership."""
+    from .compound import CustomPad, world_paste_shapes
+
+    pads = list(pads)
+    _validate_preserved(pads)
+    lines, pairs = [], []
+    prepared, reserved = [], set()
+
+    def identity_wrapper(pad):
+        return _parse(f'(footprint "identity" (version {KICAD_FORMAT_VERSION}) ' + ' '.join(pad.preserved) + ')')
+
+    for index, pad in enumerate(pads):
+        paste_layers = tuple(layer for layer in pad.layers if layer in ("F.Paste", "B.Paste"))
+        windows = world_paste_shapes(pad) if isinstance(pad, CustomPad) and paste_layers else []
+        prepared.append((index, pad, paste_layers, windows))
+        for entity in (pad, *windows):
+            wrapper = identity_wrapper(entity)
+            reserved.update(_atom(node, 1) for key in ("uuid", "tstamp") for node in _children(wrapper, key))
+
+    def identified(pad, index, role, window_index=None):
+        wrapper = identity_wrapper(pad)
+        identity = _node_identity(wrapper)
+        if identity is None:
+            # Stable IDs keep unchanged exports and Undo comparisons byte
+            # stable. Role and output indices distinguish identical instances.
+            seed = {"format": _FORMAT, "ownership_version": 1, "entity": _entity_data(pad),
+                    "index": index, "role": role, "window_index": window_index, "salt": 0}
+            while True:
+                name = json.dumps(seed, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+                identity = str(uuid5(NAMESPACE_URL, name))
+                if identity not in reserved:
+                    break
+                seed["salt"] += 1
+            reserved.add(identity)
+            pad = replace(pad, preserved=pad.preserved + (f'(uuid {_quoted(identity)})',))
+        return pad, identity
+
+    for index, pad, paste_layers, windows in prepared:
+        if not windows:
+            lines.extend(_render_pad(pad))
+            continue
+        parent, parent_id = identified(pad, index, "custom")
+        lines.extend(_render_pad(parent, layers=tuple(layer for layer in pad.layers if layer not in paste_layers)))
+        window_ids = []
+        for window_index, aperture in enumerate(windows):
+            aperture, identity = identified(aperture, index, "paste", window_index)
+            window_ids.append(identity)
+            lines.extend(_render_pad(replace(aperture, opening_explicit=True), layers=paste_layers, number=""))
+        pairs.append([parent_id, window_ids])
+    if pairs:
+        value = json.dumps({"version": 1, "pairs": pairs}, separators=(",", ":"))
+        lines.append(f'  (property {_quoted(_PASTE_OWNERSHIP_PROPERTY)} {_quoted(value)} '
+                     '(at 0 0 0) (layer "F.Fab") (hide yes) '
+                     '(effects (font (size 1 1) (thickness 0.15))))')
+    return lines
+
+
+def _paste_ownership(root):
+    properties = [node for node in _children(root, "property") if _atom(node, 1) == _PASTE_OWNERSHIP_PROPERTY]
+    if not properties:
+        return {}
+    if len(properties) != 1:
+        raise ValueError("開口の所有情報が重複しています。")
+    data = _json(_atom(properties[0], 2))
+    if (not isinstance(data, dict) or set(data) != {"version", "pairs"}
+            or type(data["version"]) is not int or data["version"] != 1
+            or not isinstance(data["pairs"], list) or not data["pairs"]):
+        raise ValueError("開口の所有情報の形式が不正です。")
+    by_identity = {}
+    for node in [root, *(child for child in root.items if isinstance(child, _Node))]:
+        identity = _node_identity(node)
+        if identity is not None:
+            by_identity.setdefault(identity, []).append(node)
+    used, ownership = set(), {}
+    for pair in data["pairs"]:
+        if (not isinstance(pair, list) or len(pair) != 2 or not isinstance(pair[0], str)
+                or not isinstance(pair[1], list) or not pair[1]
+                or any(not isinstance(identity, str) or not identity for identity in [pair[0], *pair[1]])):
+            raise ValueError("開口の所有情報の対応が不正です。")
+        nodes = []
+        for identity in [pair[0], *pair[1]]:
+            if identity in used or len(by_identity.get(identity, [])) != 1:
+                raise ValueError("開口の所有情報の識別子が重複または欠落しています。")
+            used.add(identity)
+            nodes.append(by_identity[identity][0])
+        parent, *apertures = nodes
+        if (parent.key != "pad" or _atom(parent, 1) == "" or _atom(parent, 2) != "smd" or _atom(parent, 3) != "custom"
+                or any(child.key != "pad" or _atom(child, 1) != "" or _atom(child, 2) != "smd" for child in apertures)):
+            raise ValueError("開口の所有情報の図形種別が一致しません。")
+        ownership[parent.start] = apertures
+    return ownership
 
 
 def _entity_data(entity):
@@ -289,8 +393,18 @@ def _load_text(text):
     sketch.value = name
     passive = {"descr", "tags", "attr", "model", "uuid", "tstamp", "fp_text", "fp_text_box", "solder_mask_margin", "solder_paste_margin", "solder_paste_ratio",
                "clearance", "zone_connect", "thermal_width", "thermal_gap", "autoplace_cost90", "autoplace_cost180"}
-    generator = _one(root, "generator")
-    own_generator = generator is not None and _atom(generator, 1) == "kicad_footprint_sketcher"
+    # KiCad adds these independent footprint settings during a native save.
+    # Keep their raw values, including jumper connectivity semantics, while
+    # permitting geometry edits only for the known scalar boolean form.
+    for key in ("duplicate_pad_numbers_are_jumpers", "embedded_fonts"):
+        node = _one(root, key)
+        if node is not None and (len(node.items) != 2 or not isinstance(node.items[1], _Atom)
+                                 or _atom(node, 1) not in ("yes", "no")):
+            raise ValueError(f"{key}は単一のyes/no値を指定してください。")
+        passive.add(key)
+    _one(root, "generator")
+    ownership = _paste_ownership(root)
+    owned_apertures = {child.start for children in ownership.values() for child in children}
     opening_defaults = {
         "mask_margin": _num(_one(root, "solder_mask_margin"), 1, 0.0),
         "paste_margin": _num(_one(root, "solder_paste_margin"), 1, 0.0),
@@ -301,6 +415,8 @@ def _load_text(text):
             retained.append(_raw(text, child)); blocked.append("未対応のルート属性")
             continue
         if child.key in ("version", "generator", "generator_version", "layer"):
+            continue
+        if child.start in owned_apertures:
             continue
         if child.key == "property" and _atom(child, 1) in ("Reference", "Value"):
             key = _atom(child, 1)
@@ -313,22 +429,21 @@ def _load_text(text):
         try:
             if child.key == "pad":
                 from .compound import CustomPad, world_to_local
-                if own_generator and not _atom(child, 1) and sketch.pads and isinstance(sketch.pads[-1], CustomPad):
-                    aperture = _read_pad(child, text, aperture=True, opening_defaults=opening_defaults)
-                    if not aperture.layers or any(layer not in ("F.Paste", "B.Paste") for layer in aperture.layers):
-                        raise ValueError("空番号の特殊要素は保持のみです。")
-                    custom = sketch.pads[-1]
-                    x, y = world_to_local(custom, (aperture.x, aperture.y))
-                    aperture = replace(aperture, x=x, y=y, angle=(aperture.angle-custom.angle)%360)
-                    apertures = custom.paste_shapes + (aperture,)
-                    kwargs = {"paste_shapes": apertures, "layers": tuple(dict.fromkeys(custom.layers + aperture.layers))}
-                    if "paste_sources" in {field.name for field in fields(CustomPad)}:
-                        kwargs.update(paste_sources=apertures, paste_applied=True)
-                    sketch.pads[-1] = replace(custom, **kwargs)
-                    editable.append(child.start)
-                    classification.append("編集可能: Customに属する元Paste開口")
-                    continue
                 entity = _read_pad(child, text, opening_defaults=opening_defaults)
+                if child.start in ownership:
+                    if not isinstance(entity, CustomPad):
+                        raise ValueError("開口の所有情報に対応するCustomがありません。")
+                    apertures, layers = [], entity.layers
+                    for aperture_node in ownership[child.start]:
+                        aperture = _read_pad(aperture_node, text, aperture=True, opening_defaults=opening_defaults)
+                        if (any(layer not in ("F.Paste", "B.Paste") for layer in aperture.layers)
+                                or any(layer.replace(".Paste", ".Cu") not in entity.layers for layer in aperture.layers)):
+                            raise ValueError("所有するPaste開口の面がCustomと一致しません。")
+                        x, y = world_to_local(entity, (aperture.x, aperture.y))
+                        apertures.append(replace(aperture, x=x, y=y, angle=(aperture.angle-entity.angle)%360))
+                        layers = tuple(dict.fromkeys(layers + aperture.layers))
+                    entity = replace(entity, paste_shapes=tuple(apertures), paste_sources=tuple(apertures),
+                                     paste_applied=True, layers=layers)
             elif child.key in ("fp_rect", "fp_line", "fp_circle", "fp_arc", "fp_poly"):
                 entity = _read_graphic(child, text, f"graphic-{len(sketch.pads)+1}")
             else:
@@ -339,8 +454,12 @@ def _load_text(text):
             classification.append(f"保持のみ: {child.key}（{error}）")
             if child.key not in passive and child.key != "property":
                 blocked.append(f"{child.key}: {error}")
+            for aperture_node in ownership.get(child.start, []):
+                retained.append(_raw(text, aperture_node))
+                classification.append("保持のみ: 所有するPaste開口（親Customを保全できないため）")
         else:
             editable.append(child.start)
+            editable.extend(aperture.start for aperture in ownership.get(child.start, []))
             sketch.pads.append(entity)
             classification.append(f"編集可能: {child.key} {entity.number}")
     sketch.preserved_nodes = tuple(retained)
@@ -371,9 +490,12 @@ def _atomic_bytes(path: Path, data: bytes, overwrite: bool):
 
 
 def _validate_preserved(pads):
+    from .compound import CustomPad
+
     allowed = {"uuid", "tstamp", "pinfunction", "pintype", "clearance", "zone_connect", "thermal_bridge_width", "thermal_gap"}
     identifiers = set()
-    for pad in pads:
+
+    def validate(pad, *, rendered=True):
         for raw in pad.preserved:
             if not isinstance(raw, str):
                 raise ValueError("保持されたパッド属性が不正です。")
@@ -381,11 +503,22 @@ def _validate_preserved(pads):
             if len(wrapped.items) != 4 or not isinstance(wrapped.items[-1], _Node) or wrapped.items[-1].key not in allowed:
                 raise ValueError("編集可能パッドの保持属性が未対応です。")
             child = wrapped.items[-1]
-            if child.key in ("uuid", "tstamp"):
+            if rendered and child.key in ("uuid", "tstamp"):
                 identity = _atom(child, 1)
                 if identity in identifiers:
                     raise ValueError("識別子が重複しているため保存を停止します。コピーの識別子を再生成してください。")
                 identifiers.add(identity)
+        if isinstance(pad, CustomPad):
+            paste_rendered = rendered and any(layer in ("F.Paste", "B.Paste") for layer in pad.layers)
+            for aperture in pad.paste_shapes:
+                validate(aperture, rendered=paste_rendered)
+            # Source snapshots are metadata, not additional rendered pads. They
+            # may legitimately share an identity with the retained source pad.
+            for source in pad.paste_sources:
+                validate(source, rendered=False)
+
+    for pad in pads:
+        validate(pad)
 
 
 def _validate_constraints(sketch):
@@ -455,8 +588,7 @@ def safe_export_document(directory: Path, name: str, sketch: Sketch, *, overwrit
     edited = set(metadata.get("editable_nodes", []))
     # A newly placed pad has its own numeric opening values too. Do not let a
     # retained footprint-wide setting silently override a new pad's zeroes.
-    rendered = "\n".join(line for pad in sketch.pads
-                         for line in _render_pad(replace(pad, opening_explicit=True)))
+    rendered = "\n".join(_render_entities_with_ownership(replace(pad, opening_explicit=True) for pad in sketch.pads))
     inserted, found = False, set()
     generator_found = False
     for child in root.items[2:]:
@@ -470,6 +602,8 @@ def safe_export_document(directory: Path, name: str, sketch: Sketch, *, overwrit
             generator_found = True
         if geometry_changed and child.key == "generator_version":
             # The source program's release is not this application's version.
+            changes.append((child.start, child.end, ""))
+        if geometry_changed and child.key == "property" and _atom(child, 1) == _PASTE_OWNERSHIP_PROPERTY:
             changes.append((child.start, child.end, ""))
         if child.key == "property" and _atom(child, 1) in ("Reference", "Value"):
             key = _atom(child, 1); found.add(key)
@@ -543,6 +677,7 @@ def save_project(path: Path, sketch: Sketch, image: Image.Image | None, footprin
     from dataclasses import asdict
     _validate_footprint_name(footprint_name)
     _validate_constraints(sketch)
+    _validate_preserved(sketch.pads)
     calibration = None
     if sketch.calibration is not None:
         calibration = {field.name: getattr(sketch.calibration, field.name) for field in fields(sketch.calibration) if field.init}

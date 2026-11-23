@@ -15,7 +15,9 @@ from .canvas import SketchCanvas, pad_outline
 from .interaction import hit_pad, pad_corners, resize_pad
 from .editing import Snapshot, UndoHistory, align_centers, distribute_centers, duplicate_pads, mirrored_copies
 from .compound import CustomPad, merge_pads, fillet_pad
+from .graphics import Graphic
 from .model import PAD_LAYERS, AxisCalibration, Calibration, Pad, Point, Sketch, export_footprint
+from .layers import layers_locked, visible_layers
 
 
 SURFACE = "#ffffff"
@@ -32,7 +34,11 @@ AXIS_METHOD = "横2点＋縦2点（標準）"
 UNIFORM_METHOD = "2点・共通縮尺（補助）"
 
 
-def minimum_scale(calibration: Calibration | AxisCalibration) -> float:
+def minimum_scale(calibration: Calibration | AxisCalibration | None) -> float:
+    # Existing mm geometry remains editable while a replacement image awaits
+    # calibration. There is no pixel scale to check in that state.
+    if calibration is None:
+        return 1.0
     return min(calibration.mm_per_pixel_x, calibration.mm_per_pixel_y)
 
 
@@ -491,7 +497,8 @@ class SketcherApp:
         can_edit_selection = self.mode == "idle" and not self.calibration_points
         has_custom = any(isinstance(self.sketch.pads[index], CustomPad) for index in self.selected_indices)
         for widget, enabled in (
-            (self._undo_button, self.history.can_undo or bool(self.calibration_points) or self._drag is not None),
+            (self._undo_button, self.history.can_undo or bool(self.calibration_points) or self._drag is not None
+             or (self.mode == "graphic" and bool(self.tools._drawing_points))),
             (self._copy_button, bool(self.selected_indices)),
             (self._renumber_button, len(self.selected_indices) == 1),
             (self._selected_number_entry, len(self.selected_indices) == 1),
@@ -524,7 +531,7 @@ class SketcherApp:
         if self.mode == "idle" and len(self.selected_indices) == 1:
             pad = self.sketch.pads[self.selected_index]
             kind = getattr(pad, "graphic_kind", pad.pad_shape)
-            if kind in ("rect", "circle", "oval", "line", "arc", "polygon"):
+            if kind in ("circle", "oval", "line", "arc", "polygon"):
                 self._radius_entry.state(["disabled"])
             if kind == "line":
                 self._height_entry.state(["disabled"])
@@ -545,7 +552,8 @@ class SketcherApp:
         self._redraw()
 
     def _redraw(self) -> None:
-        drawing_new = (self._drag is not None and self._drag["kind"] == "draw") or self.mode == "paste"
+        drawing_new = ((self._drag is not None and self._drag["kind"] == "draw")
+                       or self.mode in ("paste", "graphic"))
         self.canvas.render(self.sketch, self.calibration_points,
                            selected_index=None if drawing_new else self.selected_index,
                            preview_pad=self._preview_pad,
@@ -601,9 +609,9 @@ class SketcherApp:
         except (OSError, ValueError, Image.DecompressionBombError):
             self._message(f"下絵を開けませんでした。PNG・JPEGファイルを確認してください。 {path.name}", error=True)
             return
-        if (self.sketch.calibration is not None or self.calibration_points) and not messagebox.askyesno(
+        if (Snapshot.capture(self.sketch) != Snapshot.capture(Sketch()) or self.calibration_points) and not messagebox.askyesno(
             "下絵を切り替え",
-            "下絵を切り替えると、現在の校正・原点・パッド配置が消去されます。続けますか？",
+            "下絵を切り替えると、現在の編集データ（校正・原点・図形・拘束など）が消去されます。続けますか？",
             parent=self.root,
         ):
             return
@@ -780,13 +788,20 @@ class SketcherApp:
         return "break"
 
     def _pad_at(self, coordinates: Point) -> Pad:
+        radius = self._read_number(self.pad_radius, "角のR")
+        options = self.tools.pad_options() if hasattr(self, "tools") else {}
+        shape = options.get("pad_shape", "auto")
+        if shape in ("circle", "oval") and radius:
+            raise ValueError("円・楕円パッドのRは形状から決まります。角のRは0にしてください。")
+        if shape in ("rect", "roundrect"):
+            options["pad_shape"] = "roundrect" if radius else "rect"
         return Pad(
             number=self.pad_number.get(), x=coordinates[0], y=coordinates[1],
             width=self._read_number(self.pad_width, "幅"),
             height=self._read_number(self.pad_height, "高さ"),
             angle=self._read_number(self.pad_angle, "角度"),
-            radius=self._read_number(self.pad_radius, "角のR"),
-            **(self.tools.pad_options() if hasattr(self, "tools") else {}),
+            radius=radius,
+            **options,
         )
 
     @staticmethod
@@ -993,6 +1008,9 @@ class SketcherApp:
         self._preview_pads.clear()
         self._paste_previews.clear()
         self._snap_guides.clear()
+        if hasattr(self, "tools"):
+            self.tools._drawing_points.clear()
+            self.tools._point_fields = None
 
     def _shortcut(self, event: tk.Event, action) -> str | None:
         if isinstance(event.widget, (tk.Entry, ttk.Entry, ttk.Combobox, tk.Text)):
@@ -1001,7 +1019,7 @@ class SketcherApp:
         return "break"
 
     def undo(self) -> None:
-        if self._drag is not None:
+        if self._drag is not None or (self.mode == "graphic" and self.tools._drawing_points):
             self._cancel_action(None)
             return
         if self.calibration_points:
@@ -1134,6 +1152,9 @@ class SketcherApp:
             return
         if not isinstance(self.sketch.pads[self.selected_index], CustomPad):
             return
+        if self.sketch.calibration is None or self.sketch.origin is None:
+            self._message("角をキャンバスで選ぶ前に、下絵を校正して原点を指定してください。", error=True)
+            return
         self._clear_preview()
         self.calibration_points.clear()
         self.mode = "fillet"
@@ -1193,17 +1214,18 @@ class SketcherApp:
             if getattr(original, "graphic_kind", original.pad_shape) == "circle" and len(self.selected_indices) == 1:
                 if width != original.width and height == original.height: height = width
                 elif height != original.height and width == original.width: width = height
+            radius = self._read_number(self.pad_radius, "角のR")
             candidate = replace(original, number=self.pad_number.get(),
                                 width=width, height=height,
                                 angle=self._read_number(self.pad_angle, "角度"),
-                                radius=self._read_number(self.pad_radius, "角のR"))
+                                **self._radius_changes(original, radius))
             if isinstance(original, CustomPad):
                 if (candidate.width, candidate.height, candidate.radius) != (original.width, original.height, 0):
                     raise ValueError("合体形状の寸法変更は、Undoで合体前へ戻して元の図形を編集してください。")
                 candidate = replace(original, number=candidate.number, angle=candidate.angle)
             replacements = {index: (candidate if len(self.selected_indices) == 1 else
                             replace(self.sketch.pads[index], width=candidate.width, height=candidate.height,
-                                    angle=candidate.angle, radius=candidate.radius))
+                                    angle=candidate.angle, **self._radius_changes(self.sketch.pads[index], candidate.radius)))
                             for index in self.selected_indices}
             ensure_drawable(minimum_scale(self.sketch.calibration), list(replacements.values()))
         except ValueError as error:
@@ -1217,6 +1239,23 @@ class SketcherApp:
         self._refresh_pad_list()
         self._refresh()
         self._message(f"パッド {candidate.number} の寸法・属性を更新しました。")
+
+    @staticmethod
+    def _radius_changes(pad: Pad, radius: float) -> dict:
+        if isinstance(pad, CustomPad):
+            return {"radius": radius}
+        if isinstance(pad, Graphic):
+            if pad.graphic_kind in ("rect", "roundrect"):
+                return {"radius": radius, "graphic_kind": "roundrect" if radius else "rect"}
+            if radius:
+                raise ValueError("この図形には角のRを適用できません。")
+            return {"radius": 0}
+        if pad.pad_shape in ("circle", "oval") and radius:
+            raise ValueError("円・楕円パッドのRは形状から決まるため、角のRは適用できません。")
+        changes = {"radius": radius}
+        if pad.pad_shape in ("rect", "roundrect"):
+            changes["pad_shape"] = "roundrect" if radius else "rect"
+        return changes
 
     def _event_mm(self, event: tk.Event) -> Point:
         return self.sketch.image_to_mm(self.canvas.canvas_to_image((event.x, event.y)))
@@ -1244,8 +1283,8 @@ class SketcherApp:
             self._message("校正の実距離を入力して適用するか、選択ツールで校正点の選択を終了してください。")
             return
         hit = next((i for i in range(len(self.sketch.pads) - 1, -1, -1)
-                    if not any(layer in self.canvas.locked_layers for layer in self.sketch.pads[i].layers)
-                    and not all(layer in self.canvas.hidden_layers for layer in self.sketch.pads[i].layers)
+                    if not layers_locked(self.sketch.pads[i].layers, self.canvas.locked_layers)
+                    and visible_layers(self.sketch.pads[i].layers, self.canvas.hidden_layers)
                     and hit_pad(self.sketch.pads[i], point)), None)
         if event.state & 0x0004:
             chosen = set(self.selected_indices)
@@ -1260,7 +1299,10 @@ class SketcherApp:
             self._refresh_pad_list()
             self._refresh()
             return
-        if self.selected_index is not None and len(self.selected_indices) == 1 and not isinstance(self.sketch.pads[self.selected_index], CustomPad):
+        if (self.selected_index is not None and len(self.selected_indices) == 1
+                and not isinstance(self.sketch.pads[self.selected_index], CustomPad)
+                and not layers_locked(self.sketch.pads[self.selected_index].layers, self.canvas.locked_layers)
+                and visible_layers(self.sketch.pads[self.selected_index].layers, self.canvas.hidden_layers)):
             pad = self.sketch.pads[self.selected_index]
             for corner, position in enumerate(pad_corners(pad)):
                 screen = self.canvas.image_to_canvas(self.sketch.mm_to_image(position))
@@ -1404,7 +1446,9 @@ class SketcherApp:
                 left, right = sorted((drag["start"][0], end[0]))
                 top, bottom = sorted((drag["start"][1], end[1]))
                 self._set_selection(index for index, pad in enumerate(self.sketch.pads)
-                                    if left <= pad.x <= right and top <= pad.y <= bottom)
+                                    if left <= pad.x <= right and top <= pad.y <= bottom
+                                    and not layers_locked(pad.layers, self.canvas.locked_layers)
+                                    and visible_layers(pad.layers, self.canvas.hidden_layers))
             self._clear_preview()
             if self.selected_index is not None:
                 self._fill_pad_fields(self.sketch.pads[self.selected_index])

@@ -489,7 +489,7 @@ class ExtendedGuiTests(_base.GuiInteractionTests):
                 self.assertEqual(pad.number, "" if kind == "np_thru_hole" else original.number)
                 self._assert_point((pad.x, pad.y), (1.25, -1.5))
                 self.assertEqual((pad.width, pad.height, pad.angle, pad.radius),
-                                 (original.width, original.height, original.angle, original.radius))
+                                 (original.width, original.height, original.angle, 0))
                 self.assertEqual((pad.drill_width, pad.drill_height), (float(drill_w), float(drill_h)))
                 self.assertEqual(pad.layers, ("*.Cu", "*.Mask"))
                 payload = self._export_bytes()
@@ -790,6 +790,288 @@ class ExtendedGuiTests(_base.GuiInteractionTests):
         self.assertEqual(self._document(), baseline)
         self.assertEqual(self.app.canvas.image.tobytes(), pixels)
         self.assertFalse(self.app.history.can_undo)
+
+    def test_replacement_reference_protects_geometry_and_allows_existing_mm_edits_before_calibration(self):
+        self._calibrate()
+        self.app.center_snap.set(False)
+        self._numeric([(-2, -1), (2, 1)])
+        with patch("footprint_sketcher.workspace.filedialog.askopenfilename", return_value=str(_base.SAMPLE)):
+            self.app.tools.attach_reference()
+        self._pump()
+        baseline = self._document()
+        self.assertIsNone(self.app.sketch.calibration)
+        with patch("footprint_sketcher.gui.messagebox.askyesno", return_value=False) as ask:
+            self.app.load_image(_base.SAMPLE)
+        self._pump()
+        ask.assert_called_once()
+        self.assertEqual(self._document(), baseline)
+        self._select_rows([0])
+        self._entry(self.app.pad_width, "1.5")
+        self._return(self.app.pad_width)
+        self.assertEqual(self.app.sketch.pads[0].width, 1.5)
+        self._select_rows([0, 1])
+        mean_y = math.fsum(p.y for p in self.app.sketch.pads) / 2
+        self._button("横中心揃え")
+        self.assertEqual([p.y for p in self.app.sketch.pads], [mean_y, mean_y])
+        before_mirror = self._document()
+        self._button("Y軸で反転コピー")
+        self.assertEqual(len(self.app.sketch.pads), 4)
+        self.assertEqual([(p.x, p.y) for p in self.app.sketch.pads[2:]],
+                         [(-p.x, p.y) for p in before_mirror.pads])
+        self._button("1操作戻す")
+        self.assertEqual(self._document(), before_mirror)
+        self._button("1操作戻す")
+        self._button("1操作戻す")
+        self.assertEqual(self._document(), baseline)
+
+    def test_through_hole_wildcard_visibility_canvas_selection_and_edit_lock(self):
+        self._calibrate()
+        self.app.center_snap.set(False)
+        self._numeric([(0, 0)], width="2", height="1.4")
+        tools = self._tools(0)
+        for name, value in dict(pad_type="thru_hole", drill_w="0.5", drill_h="0.5").items():
+            self._field(name, value)
+        self._button("選択へ位置・穴・面・開口を適用")
+        baseline, history = self._document(), tuple(self.app.history._snapshots)
+        tools.layer_locked["B.Cu"].set(True)
+        tools.layers_changed()
+        self._field("x", "1")
+        self._return(tools.fields["x"])
+        self.assertEqual(self._document(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self._click((0, 0), world=True)
+        self.assertFalse(self.app.selected_indices)
+        for layer in ("F.Cu", "B.Cu", "F.Mask", "B.Mask"):
+            tools.layer_visible[layer].set(False)
+        tools.layers_changed()
+        self._pump()
+        self.assertFalse(self.app.canvas.find_withtag("pad-0"))
+        tools.layer_visible["B.Cu"].set(True)
+        tools.layers_changed()
+        self._pump()
+        self.assertTrue(self.app.canvas.find_withtag("pad-0"))
+        self.assertEqual(self._document(), baseline)
+
+    def test_edit_lock_rejects_equal_duplicate_deletion_creation_and_entry_to_locked_layer(self):
+        self._calibrate()
+        self.app.center_snap.set(False)
+        self._numeric([(0, 0)])
+        tools = self._tools(2)
+        tools.keep_numbers.set(True)
+        self._button("点A→点Bへコピー")
+        self.assertEqual(self.app.sketch.pads[0], self.app.sketch.pads[1])
+        baseline, history = self._document(), tuple(self.app.history._snapshots)
+        tools.layer_locked["F.Cu"].set(True)
+        tools.layers_changed()
+        self._select_rows([0])
+        tools.delete()
+        self._pump()
+        self.assertEqual(self._document(), baseline)
+        self._select_rows([0])
+        self._entry(self.app.pad_width, "1.8")
+        self._return(self.app.pad_width)
+        self.assertEqual(self._document(), baseline)
+        self._button("数値サイズで配置")
+        self._click((3, 1), world=True)
+        self.assertEqual(self._document(), baseline)
+        self._button("選択/移動")
+        tools.layer_locked["F.Cu"].set(False)
+        tools.layer_locked["B.Cu"].set(True)
+        tools.layers_changed()
+        self._select_rows([0])
+        self._field("side", "B")
+        self._button("選択へ位置・穴・面・開口を適用")
+        self.assertEqual(self._document(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+
+    def test_graphic_drag_and_partial_point_drawing_undo_only_cancel_the_preview(self):
+        self._calibrate()
+        self.app.center_snap.set(False)
+        self._numeric([(-3, 0)])
+        tools = self._tools(1)
+        baseline, history = self._document(), tuple(self.app.history._snapshots)
+        for kind in ("rect", "line", "circle", "arc", "polygon"):
+            with self.subTest(kind=kind):
+                self._field("graphic", kind)
+                self._button("キャンバスで作図")
+                self._world_event("<Button-1>", (0, 0))
+                if kind not in ("arc", "polygon"):
+                    self._world_event("<B1-Motion>", (2, 2))
+                    self.assertIsInstance(self.app._preview_pad, Graphic)
+                    self.assertTrue(self.app.canvas.find_withtag("pad-0"))
+                self.assertFalse(self.app._undo_button.instate(["disabled"]))
+                self.app.canvas.focus_set()
+                self.app.canvas.event_generate("<Control-z>", when="tail")
+                self._pump()
+                self.assertEqual(self._document(), baseline)
+                self.assertEqual(tuple(self.app.history._snapshots), history)
+                self.assertIsNone(self.app._preview_pad)
+                self.assertFalse(tools._drawing_points)
+                self.assertEqual(self.app.mode, "idle")
+
+    def test_npth_can_be_changed_to_numbered_pth_or_smd_and_undone(self):
+        self._calibrate()
+        self._numeric([(-2, 0), (2, 0)], width="2", height="1.4")
+        tools = self._tools(0)
+        self._select_rows([0, 1])
+        for name, value in dict(pad_type="np_thru_hole", drill_w="0.5", drill_h="0.5").items():
+            self._field(name, value)
+        self._button("選択へ位置・穴・面・開口を適用")
+        baseline = self._document()
+        self.assertEqual([p.number for p in self.app.sketch.pads], ["", ""])
+        self._field("pad_type", "thru_hole")
+        self._button("選択へ位置・穴・面・開口を適用")
+        self.assertEqual([p.pad_type for p in self.app.sketch.pads], ["thru_hole", "thru_hole"])
+        self.assertEqual({p.number for p in self.app.sketch.pads}, {"1", "2"})
+        self._button("1操作戻す")
+        self.assertEqual(self._document(), baseline)
+        self._select_rows([0])
+        self.assertTrue(self.app._number_entry.instate(["disabled"]))
+        for name, value in dict(pad_type="smd", drill_w="0", drill_h="0").items():
+            self._field(name, value)
+        self._button("選択へ位置・穴・面・開口を適用")
+        self.assertEqual((self.app.sketch.pads[0].pad_type, self.app.sketch.pads[0].number), ("smd", "1"))
+        self.assertFalse(self.app._number_entry.instate(["disabled"]))
+        self._button("1操作戻す")
+        self.assertEqual(self._document(), baseline)
+
+    def test_imported_rect_radius_changes_the_exported_shape_and_roundtrips(self):
+        from footprint_sketcher.model import Pad, export_footprint
+        from footprint_sketcher.persistence import load_footprint
+
+        source_dir = Path(self.temporary.name) / "radius-source.pretty"
+        source_dir.mkdir()
+        source = export_footprint(source_dir, "RectRadius", [Pad("1", 0, 0, 2, 1, pad_shape="rect"),
+                                                           Pad("2", 3, 0, 2, 1, pad_shape="oval")])
+        with patch("footprint_sketcher.workspace.filedialog.askopenfilename", return_value=str(source)), \
+             patch("footprint_sketcher.workspace.messagebox.askyesno", return_value=True), \
+             patch("footprint_sketcher.workspace.messagebox.showinfo"):
+            self.app.tools.open_footprint()
+        self._pump()
+        self._select_rows([0])
+        self.assertFalse(self.app._radius_entry.instate(["disabled"]))
+        self._entry(self.app.pad_radius, "0.2")
+        self._return(self.app.pad_radius)
+        self.assertEqual((self.app.sketch.pads[0].pad_shape, self.app.sketch.pads[0].radius), ("roundrect", 0.2))
+        rounded = self._export_named("RectRadius")
+        _, reread, _ = load_footprint(rounded)
+        self.assertEqual(reread.pads, self.app.sketch.pads)
+        self._entry(self.app.pad_radius, "0")
+        self._return(self.app.pad_radius)
+        self.assertEqual((self.app.sketch.pads[0].pad_shape, self.app.sketch.pads[0].radius), ("rect", 0))
+        square = self._export_named("RectRadiusSquare")
+        _, reread, _ = load_footprint(square)
+        self.assertEqual(reread.pads, self.app.sketch.pads)
+        self._select_rows([0, 1])
+        before, history = self._document(), tuple(self.app.history._snapshots)
+        self._entry(self.app.pad_radius, "0.1")
+        self._return(self.app.pad_radius)
+        self.assertEqual(self._document(), before)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self.assertIn("R", self.app.status.get())
+
+        self._select_rows([0])
+        self._entry(self.app.pad_radius, "0.2")
+        self._return(self.app.pad_radius)
+        tools = self._tools(0)
+        self._field("shape", "oval")
+        self._button("選択へ位置・穴・面・開口を適用")
+        self.assertEqual((self.app.sketch.pads[0].pad_shape, self.app.sketch.pads[0].radius), ("oval", 0))
+        self._entry(self.app.pad_width, "2.5")
+        self._return(self.app.pad_width)
+        self.assertEqual((self.app.sketch.pads[0].pad_shape, self.app.sketch.pads[0].width), ("oval", 2.5))
+        self._field("shape", "rect")
+        self._button("選択へ位置・穴・面・開口を適用")
+        self.assertEqual((self.app.sketch.pads[0].pad_shape, self.app.sketch.pads[0].radius), ("rect", 0))
+
+    def test_custom_mask_only_view_draws_each_eroded_component(self):
+        from shapely import Polygon
+
+        self._calibrate()
+        self.app.center_snap.set(False)
+        self._numeric([(-1.5, 0), (1.5, 0)], width="2", height="2")
+        self._numeric([(0, 0)], width="3", height="0.2")
+        self._select_rows([0, 1, 2])
+        self._entry(self.app.merge_number, "M")
+        self._button("選択図形を合体")
+        tools = self._tools(0)
+        self._field("mask_margin", "-0.15")
+        self._button("選択へ位置・穴・面・開口を適用")
+        pad = self.app.sketch.pads[0]
+        self.assertEqual(Polygon(pad.outline).buffer(pad.mask_margin).geom_type, "MultiPolygon")
+        tools.layer_visible["F.Cu"].set(False)
+        tools.layer_visible["F.Paste"].set(False)
+        tools.layers_changed()
+        self._pump()
+        self.assertEqual(len(self.app.canvas.find_withtag("pad-0")), 2)
+
+    def test_custom_basic_shape_change_is_rejected_without_changing_its_openings(self):
+        self._calibrate()
+        self._l_custom()
+        tools = self._tools(0)
+        baseline, history = self._document(), tuple(self.app.history._snapshots)
+        self._field("shape", "rect")
+        self._button("選択へ位置・穴・面・開口を適用")
+        self.assertEqual(self._document(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self.assertIn("合体", self.app.status.get())
+
+    def test_custom_mask_erosion_that_removes_the_entire_opening_is_atomic(self):
+        from shapely import Polygon
+
+        self._calibrate()
+        self.app.center_snap.set(False)
+        self._numeric([(-0.5, 0.5), (0.5, -0.5)], width="4", height="0.2", angle="45")
+        self._select_rows([0, 1])
+        self._entry(self.app.merge_number, "M")
+        self._button("選択図形を合体")
+        tools = self._tools(0)
+        pad = self.app.sketch.pads[0]
+        self.assertTrue(Polygon(pad.outline).buffer(-0.2).is_empty)
+        baseline, history = self._document(), tuple(self.app.history._snapshots)
+        self._field("mask_margin", "-0.2")
+        self._button("選択へ位置・穴・面・開口を適用")
+        self.assertEqual(self._document(), baseline)
+        self.assertEqual(tuple(self.app.history._snapshots), history)
+        self.assertIn("Mask", self.app.status.get())
+
+    def test_custom_mask_expansion_keeps_a_hole_without_covering_the_underlay(self):
+        from shapely import Polygon, union_all
+
+        self._calibrate()
+        self.app.center_snap.set(False)
+        for point, width, height in (((-2.5, 0), "1", "6"), ((0, -2.5), "6", "1"),
+                                      ((0, 2.5), "6", "1"), ((2.5, -1.75), "1", "1.5"),
+                                      ((2.5, 1.75), "1", "1.5")):
+            self._numeric([point], width=width, height=height)
+        self._select_rows(range(5))
+        self._entry(self.app.merge_number, "C")
+        self._button("選択図形を合体")
+        tools = self._tools(0)
+        self._field("mask_margin", "1.1")
+        self._button("選択へ位置・穴・面・開口を適用")
+        pad = self.app.sketch.pads[0]
+        expected = Polygon(world_outline(pad)).buffer(pad.mask_margin)
+        self.assertEqual(len(expected.interiors), 1)
+        baseline, pixels = self._document(), self.app.canvas.image.tobytes()
+        tools.layer_visible["F.Cu"].set(False)
+        tools.layer_visible["F.Paste"].set(False)
+        tools.layers_changed()
+        self._pump()
+        parts = []
+        for item in self.app.canvas.find_withtag("pad-0"):
+            if self.app.canvas.type(item) != "polygon":
+                continue
+            coordinates = self.app.canvas.coords(item)
+            points = [self.app.sketch.image_to_mm(self.app.canvas.canvas_to_image((x, y)))
+                      for x, y in zip(coordinates[::2], coordinates[1::2])]
+            parts.append(Polygon(points))
+            self.assertEqual(self.app.canvas.itemcget(item, "outline"), "")
+        displayed = union_all(parts)
+        self.assertLess(expected.symmetric_difference(displayed).area, 1e-8)
+        self.assertEqual(len(displayed.interiors), 1)
+        self.assertEqual(self._document(), baseline)
+        self.assertEqual(self.app.canvas.image.tobytes(), pixels)
 
 
 def load_tests(loader, tests, pattern):

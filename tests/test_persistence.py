@@ -148,6 +148,147 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(len(reread.pads[0].paste_shapes), 2)
         self.assertEqual(reread.pads[0].x, 3)
 
+    def test_repeated_export_of_the_same_custom_is_byte_stable(self):
+        custom = fillet_pad(merge_pads([Pad('1', 0, 0, 2, 2)], '1'), 0, 0.2)
+        first = export_footprint(self.root, 'Stable', [custom])
+        second = export_footprint(self.out, 'Stable', [custom])
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        self.assertEqual(custom.preserved, ())
+        self.assertTrue(all(aperture.preserved == () for aperture in custom.paste_shapes))
+
+    def test_identical_custom_instances_receive_distinct_stable_identities(self):
+        from footprint_sketcher.persistence import _parse, _children, _atom
+
+        custom = merge_pads([Pad('1', 0, 0, 2, 2)], '1')
+        first = export_footprint(self.root, 'Identical', [custom, custom])
+        second = export_footprint(self.out, 'Identical', [custom, custom])
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        pads = _children(_parse(first.read_text(encoding='utf-8')), 'pad')
+        identities = [_atom(_children(pad, 'uuid')[0], 1) for pad in pads]
+        self.assertEqual(len(identities), 4)
+        self.assertEqual(len(set(identities)), 4)
+        _, reopened, _ = load_footprint(first)
+        self.assertEqual(len(reopened.pads), 2)
+        self.assertEqual([len(pad.paste_shapes) for pad in reopened.pads], [1, 1])
+
+    def test_generated_identity_does_not_replace_an_existing_pad_identity(self):
+        from footprint_sketcher.persistence import _parse, _children, _atom
+
+        custom = merge_pads([Pad('1', 0, 0, 2, 2)], '1')
+        initial = export_footprint(self.root, 'Initial', [custom])
+        initial_id = _atom(_children(_children(_parse(initial.read_text(encoding='utf-8')), 'pad')[0], 'uuid')[0], 1)
+        existing = Pad('2', 5, 0, 1, 1, preserved=(f'(uuid "{initial_id}")',))
+        first = export_footprint(self.root, 'Collision', [custom, existing])
+        second = export_footprint(self.out, 'Collision', [custom, existing])
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+        pads = _children(_parse(first.read_text(encoding='utf-8')), 'pad')
+        identities = [_atom(_children(pad, 'uuid')[0], 1) for pad in pads]
+        self.assertEqual(len(set(identities)), 3)
+        self.assertEqual(identities[-1], initial_id)
+        self.assertNotEqual(identities[0], initial_id)
+
+    def test_unowned_paste_is_not_absorbed_into_a_generated_custom(self):
+        custom = merge_pads([Pad('1', 0, 0, 2, 2)], '1')
+        path = export_footprint(self.root, 'Ownership', [custom])
+        text = path.read_text(encoding='utf-8')
+        independent = '(pad "" smd rect (at 10 0) (size 1 1) (layers "F.Paste"))'
+        text = text.rstrip()[:-1] + '\n' + independent + '\n)\n'
+        name, sketch, _ = load_footprint(self.footprint(text))
+        self.assertEqual(len(sketch.pads), 1)
+        self.assertEqual(len(sketch.pads[0].paste_shapes), 1)
+        self.assertIn(independent, sketch.preserved_nodes)
+        exact = safe_export_document(self.out, name, sketch)
+        self.assertEqual(exact.read_bytes(), text.encode())
+        sketch.reference = 'U?'
+        safe_export_document(self.out, name, sketch, overwrite=True)
+        sketch.pads[0] = replace(sketch.pads[0], x=5)
+        before = exact.read_bytes()
+        with self.assertRaisesRegex(ValueError, '参照を保全'):
+            safe_export_document(self.out, name, sketch, overwrite=True)
+        self.assertEqual(exact.read_bytes(), before)
+
+    def test_legacy_generated_custom_paste_without_ownership_is_retained(self):
+        custom = merge_pads([Pad('1', 0, 0, 2, 2)], '1')
+        from footprint_sketcher.model import _render_pad
+        text = '(footprint "Legacy" (version 20260206) (generator "kicad_footprint_sketcher")\n'
+        text += '\n'.join(_render_pad(custom)) + '\n)\n'
+        name, sketch, _ = load_footprint(self.footprint(text))
+        self.assertEqual(len(sketch.pads[0].paste_shapes), 0)
+        self.assertTrue(any(node.startswith('(pad ""') for node in sketch.preserved_nodes))
+        self.assertEqual(safe_export_document(self.out, name, sketch).read_bytes(), text.encode())
+        sketch.value = 'Changed'
+        safe_export_document(self.out, name, sketch, overwrite=True)
+        sketch.pads[0] = replace(sketch.pads[0], x=3)
+        with self.assertRaisesRegex(ValueError, '参照を保全'):
+            safe_export_document(self.out, name, sketch, overwrite=True)
+
+    def test_paste_ownership_uses_identities_across_order_changes_and_copy(self):
+        from footprint_sketcher.editing import duplicate_pads
+        from footprint_sketcher.persistence import _parse, _children, _atom
+
+        first = merge_pads([Pad('1', 0, 0, 2, 2)], '1')
+        second = merge_pads([Pad('2', 5, 0, 2, 2)], '2')
+        text = export_footprint(self.root, 'Linked', [first, second]).read_text(encoding='utf-8')
+        root = _parse(text)
+        pads = _children(root, 'pad')
+        # Reorder only source pad nodes, as an external formatter may do. Their
+        # UUID ownership survives even when each window precedes its parent.
+        replacements = [text[node.start:node.end] for node in reversed(pads)]
+        for node, replacement in reversed(list(zip(pads, replacements))):
+            text = text[:node.start] + replacement + text[node.end:]
+        text = text.replace('(generator "kicad_footprint_sketcher")', '(generator "pcbnew")')
+        name, sketch, _ = load_footprint(self.footprint(text))
+        before = {pad.number: (pad.preserved, pad.paste_shapes[0].preserved) for pad in sketch.pads}
+        self.assertEqual({pad.number: len(pad.paste_shapes) for pad in sketch.pads}, {'1': 1, '2': 1})
+        parent = next(pad for pad in sketch.pads if pad.number == '1')
+        sketch.pads[sketch.pads.index(parent)] = replace(parent, x=2)
+        sketch.pads.extend(duplicate_pads([parent], sketch.pads, (10, 0)))
+        output = safe_export_document(self.out, name, sketch)
+        name, restored, _ = load_footprint(output)
+        self.assertEqual(len(restored.pads), 3)
+        self.assertTrue(all(len(pad.paste_shapes) == 1 for pad in restored.pads))
+        for pad in restored.pads:
+            if pad.number in before:
+                self.assertEqual((pad.preserved, pad.paste_shapes[0].preserved), before[pad.number])
+        identities = [_atom(_children(_parse(output.read_text(encoding='utf-8')), 'pad')[i].items[-1], 1)
+                      for i in range(6)]
+        self.assertEqual(len(set(identities)), 6)
+        # The ownership property is regenerated once, never accumulated.
+        restored.pads[0] = replace(restored.pads[0], y=1)
+        second_output = safe_export_document(self.out, name, restored, overwrite=True)
+        self.assertEqual(second_output.read_text(encoding='utf-8').count('"FootprintSketcher-PasteOwnership"'), 1)
+        self.assertEqual(len(load_footprint(second_output)[1].pads), 3)
+
+    def test_broken_duplicate_or_missing_paste_ownership_is_rejected(self):
+        from footprint_sketcher.persistence import _parse, _children, _atom
+        from footprint_sketcher.model import _quoted
+
+        custom = merge_pads([Pad('1', 0, 0, 2, 2)], '1')
+        text = export_footprint(self.root, 'BadOwnership', [custom]).read_text(encoding='utf-8')
+        root = _parse(text)
+        prop = next(node for node in _children(root, 'property')
+                    if _atom(node, 1) == 'FootprintSketcher-PasteOwnership')
+        ownership = json.loads(_atom(prop, 2))
+        parent_id, [window_id] = ownership['pairs'][0]
+        mutations = [
+            {'version': 2, 'pairs': ownership['pairs']},
+            {'version': 1, 'pairs': [[parent_id, ['missing']]]},
+            {'version': 1, 'pairs': [[parent_id, [window_id, window_id]]]},
+            {'version': 1, 'pairs': [[parent_id, [window_id]], [parent_id, [window_id]]]},
+            {'version': 1, 'pairs': [[window_id, [parent_id]]]},
+        ]
+        value_atom = prop.items[2]
+        for mutation in mutations:
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, '所有情報'):
+                broken = text[:value_atom.start] + _quoted(json.dumps(mutation)) + text[value_atom.end:]
+                load_footprint(self.footprint(broken))
+        duplicate_property = text[:root.end-1] + text[prop.start:prop.end] + text[root.end-1:]
+        with self.assertRaisesRegex(ValueError, '所有情報が重複'):
+            load_footprint(self.footprint(duplicate_property))
+        duplicate_identity = text.replace(f'(uuid "{window_id}")', f'(uuid "{parent_id}")')
+        with self.assertRaisesRegex(ValueError, '識別子が重複または欠落'):
+            load_footprint(self.footprint(duplicate_identity))
+
     def test_root_opening_defaults_and_local_zero_survive_moving_and_project(self):
         text = '''(footprint "Openings" (version 20260206) (generator "fixture")
         (solder_mask_margin 0.2) (solder_paste_margin -0.1) (solder_paste_ratio -0.05)
@@ -241,6 +382,55 @@ class PersistenceTests(unittest.TestCase):
         no_attr.pads[0] = replace(no_attr.pads[0], pad_type='thru_hole', layers=('*.Cu', '*.Mask'), drill_width=1, drill_height=1)
         self.assertIn('(attr through_hole)', safe_export_document(self.out, 'NewAttribute', no_attr).read_text(encoding='utf-8'))
 
+    def test_kicad_boolean_metadata_survives_custom_geometry_edit(self):
+        custom = merge_pads([Pad('1', 0, 0, 2, 2)], '1')
+        text = export_footprint(self.root, 'NativeMetadata', [custom]).read_text(encoding='utf-8')
+        text = text.replace('(generator "kicad_footprint_sketcher")', '(generator "pcbnew")')
+        for jumpers in ('yes', 'no'):
+            for fonts in ('yes', 'no'):
+                with self.subTest(jumpers=jumpers, fonts=fonts):
+                    flags = f'(duplicate_pad_numbers_are_jumpers {jumpers})\n (embedded_fonts {fonts})'
+                    source = text.rstrip()[:-1] + flags + '\n)\n'
+                    name, sketch, _ = load_footprint(self.footprint(source))
+                    self.assertEqual(sketch.metadata['blocked_geometry'], [])
+                    self.assertIn(f'(duplicate_pad_numbers_are_jumpers {jumpers})', sketch.preserved_nodes)
+                    self.assertIn(f'(embedded_fonts {fonts})', sketch.preserved_nodes)
+                    sketch.pads[0] = replace(sketch.pads[0], x=3)
+                    output = safe_export_document(self.out, name, sketch, overwrite=True)
+                    self.assertIn(flags, output.read_text(encoding='utf-8'))
+                    _, reopened, _ = load_footprint(output)
+                    self.assertEqual(reopened.pads[0].x, 3)
+                    self.assertEqual(len(reopened.pads[0].paste_shapes), 1)
+
+    def test_kicad_boolean_metadata_rejects_invalid_nested_or_duplicate_values(self):
+        for key in ('duplicate_pad_numbers_are_jumpers', 'embedded_fonts'):
+            for raw in (f'({key} true)', f'({key})', f'({key} yes extra)',
+                        f'({key} (value yes))', f'({key} yes (future no))',
+                        f'({key} yes) ({key} no)'):
+                with self.subTest(raw=raw), self.assertRaises(ValueError):
+                    load_footprint(self.footprint(f'(footprint "BadMetadata" (version 20260206) {raw})'))
+
+    def test_kicad_10_native_saved_ownership_fixture_can_be_edited_without_losing_metadata(self):
+        # Saved by Windows KiCad 10.0.7 with preserveUUID=True. Native save
+        # reorders windows before their Custom and adds these boolean fields.
+        source = Path(__file__).parent / 'fixtures' / 'kicad10-native-ownership.kicad_mod'
+        original = source.read_bytes()
+        name, sketch, _ = load_footprint(source)
+        self.assertEqual(sketch.metadata['blocked_geometry'], [])
+        self.assertEqual(len(sketch.pads), 1)
+        self.assertEqual(len(sketch.pads[0].paste_shapes), 2)
+        exact = safe_export_document(self.out, name, sketch)
+        self.assertEqual(exact.read_bytes(), original)
+        sketch.pads[0] = replace(sketch.pads[0], x=sketch.pads[0].x + 2)
+        output = safe_export_document(self.out, name, sketch, overwrite=True)
+        _, restored, _ = load_footprint(output)
+        self.assertEqual(restored.pads[0].x, sketch.pads[0].x)
+        self.assertEqual(len(restored.pads[0].paste_shapes), 2)
+        for node in sketch.preserved_nodes:
+            if not node.startswith('(property "FootprintSketcher-PasteOwnership"'):
+                self.assertIn(node, output.read_bytes().decode('utf-8'))
+        self.assertEqual(source.read_bytes(), original)
+
     def test_bad_syntax_wrong_profile_and_existing_output_are_rejected(self):
         for text in ['(footprint "x"', '(footprint "x" (version 20260206)) ()', '(footprint "x" (version 20241229))']:
             with self.subTest(text=text), self.assertRaises(ValueError):
@@ -331,6 +521,39 @@ class PersistenceTests(unittest.TestCase):
         document['sketch']['metadata']['blocked_geometry'] = []
         with self.assertRaisesRegex(ValueError, 'メタデータ'):
             load_project(self.archive(document))
+
+    def test_nested_paste_preserved_attributes_are_validated_before_load_and_export(self):
+        custom = merge_pads([Pad('1', 0, 0, 2, 2)], '1')
+        sketch = Sketch(); sketch.pads.append(custom)
+        project = save_project(self.root / 'custom.kfsproj', sketch, None, 'Custom')
+        with zipfile.ZipFile(project) as archive:
+            document = json.loads(archive.read('project.json'))
+        document['sketch']['pads'][0]['paste_shapes'][0]['preserved'] = ['(layers "B.Cu")']
+        with self.assertRaisesRegex(ValueError, '保持属性'):
+            load_project(self.archive(document))
+        aperture = replace(custom.paste_shapes[0], preserved=('(layers "B.Cu")',))
+        sketch.pads[:] = [replace(custom, paste_shapes=(aperture,))]
+        baseline = Sketch(); baseline.pads.append(Pad('2', 3, 0, 1, 1))
+        target = safe_export_document(self.out, 'Keep', baseline)
+        original = target.read_bytes()
+        with self.assertRaisesRegex(ValueError, '保持属性'):
+            safe_export_document(self.out, 'Keep', sketch, overwrite=True)
+        self.assertEqual(target.read_bytes(), original)
+        before = project.read_bytes()
+        with self.assertRaisesRegex(ValueError, '保持属性'):
+            save_project(project, sketch, None, 'Custom')
+        self.assertEqual(project.read_bytes(), before)
+
+    def test_nested_paste_identifiers_are_unique_but_source_snapshots_may_share_identity(self):
+        custom = merge_pads([Pad('1', 0, 0, 2, 2, preserved=('(uuid "original")',))], '1')
+        sketch = Sketch(); sketch.pads.append(custom)
+        project = save_project(self.root / 'source.kfsproj', sketch, None, 'Source')
+        _, restored, _ = load_project(project)
+        self.assertEqual(restored.pads, sketch.pads)
+        aperture = replace(custom.paste_shapes[0], preserved=('(uuid "original")',))
+        sketch.pads[:] = [replace(custom, paste_shapes=(aperture,))]
+        with self.assertRaisesRegex(ValueError, '識別子が重複'):
+            safe_export_document(self.out, 'Duplicate', sketch)
 
     def test_uuid_graphic_edits_keep_identity_and_copies_do_not_duplicate_it(self):
         from footprint_sketcher.editing import duplicate_pads

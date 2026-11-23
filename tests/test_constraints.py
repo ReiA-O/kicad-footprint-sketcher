@@ -108,6 +108,62 @@ class ConstraintTests(unittest.TestCase):
         self.assertPoint(result.pads[1], 3, 4)
         self.assertEqual((result.rank, result.dof), (14, 4))
 
+    def test_distances_form_a_triangle_from_collinear_centers(self):
+        pads = [Pad("A", 0, 0, 1, 1), Pad("B", 1, 0, 1, 1), Pad("C", 2, 0, 1, 1)]
+        before = [asdict(pad) for pad in pads]
+        relations = [Constraint("AB", "distance", (0, 1), value=1),
+                     Constraint("BC", "distance", (1, 2), value=1)]
+        current = solve_constraints(pads, relations).pads
+        result = solve_constraints(current, relations + [Constraint("AC", "distance", (0, 2), value=1)])
+        points = [(pad.x, pad.y) for pad in result.pads]
+        for i, j in ((0, 1), (1, 2), (0, 2)):
+            self.assertAlmostEqual(math.dist(points[i], points[j]), 1, places=8)
+        a, b, c = points
+        twice_area = abs((b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]))
+        self.assertAlmostEqual(twice_area, math.sqrt(3)/2, places=8)
+        self.assertEqual([asdict(pad) for pad in pads], before)
+
+    def test_collinear_distance_escape_keeps_fixed_and_horizontal_equations(self):
+        pads = [Pad("A", 2, 3, 1, 1), Pad("B", 3, 3, 1, 1), Pad("C", 4, 3, 1, 1)]
+        relations = [self.fixed(pads[0], name="A"),
+                     Constraint("base", "horizontal", (0, 2)),
+                     Constraint("AB", "distance", (0, 1), value=1),
+                     Constraint("BC", "distance", (1, 2), value=1),
+                     Constraint("AC", "distance", (0, 2), value=1)]
+        result = solve_constraints(pads, relations)
+        self.assertEqual(result.pads[0], pads[0])
+        self.assertAlmostEqual(result.pads[2].y, 3, places=8)
+        for i, j in ((0, 1), (1, 2), (0, 2)):
+            a, b = result.pads[i], result.pads[j]
+            self.assertAlmostEqual(math.hypot(b.x-a.x, b.y-a.y), 1, places=8)
+
+    def test_coincident_distance_seeds_do_not_cancel_through_point_symmetry(self):
+        pads = [Pad("A", 0, 0, 1, 1), Pad("B", 0, 0, 1, 1), Pad("C", 0, 0, 1, 1)]
+        relations = [self.fixed(pads[0], name="A"),
+                     Constraint("opposite", "symmetric", (1, 2), point=(0, 0)),
+                     Constraint("AB", "distance", (0, 1), value=1),
+                     Constraint("AC", "distance", (0, 2), value=1)]
+        for ordered in (relations, list(reversed(relations))):
+            with self.subTest(order=[c.id for c in ordered]):
+                result = solve_constraints(pads, ordered)
+                self.assertEqual(result.pads[0], pads[0])
+                b, c = result.pads[1:]
+                self.assertAlmostEqual(math.hypot(b.x, b.y), 1, places=8)
+                self.assertAlmostEqual(math.hypot(c.x, c.y), 1, places=8)
+                self.assertAlmostEqual(b.x+c.x, 0, places=8)
+                self.assertAlmostEqual(b.y+c.y, 0, places=8)
+
+    def test_impossible_triangle_still_rejects_atomically_after_singular_escape(self):
+        pads = [Pad("A", 0, 0, 1, 1), Pad("B", 1, 0, 1, 1), Pad("C", 2, 0, 1, 1)]
+        before = [asdict(pad) for pad in pads]
+        relations = [Constraint("AB", "distance", (0, 1), value=1),
+                     Constraint("BC", "distance", (1, 2), value=1),
+                     Constraint("AC", "distance", (0, 2), value=3)]
+        with self.assertRaises(ValueError) as caught:
+            solve_constraints(pads, relations)
+        self.assertTrue(any(c.id in str(caught.exception) for c in relations))
+        self.assertEqual([asdict(pad) for pad in pads], before)
+
     def test_contradictions_name_the_constraints_and_never_mutate_inputs(self):
         pads = [Pad("1", 0, 0, 1, 1)]
         before = tuple(pads)
